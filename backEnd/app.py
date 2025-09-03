@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 from testeDaIa import perguntar_ollama, buscar_na_web, get_persona_texto
 from banco.banco import (
     pegarPersonaEscolhida, 
@@ -17,6 +18,7 @@ from waitress import serve
 
 app = Flask(__name__)
 CORS(app)
+bcrypt = Bcrypt(app)
 
 @app.route('/Lyria/conversar', methods=['POST'])
 def conversarSemConta():
@@ -93,17 +95,19 @@ def set_persona_escolhida(usuario):
     except Exception as e:
         return jsonify({"erro": f"Erro ao atualizar persona: {str(e)}"}), 500
 
-@app.route('/Lyria/usuarios', methods=['POST'])
-def criar_usuario_route():
+@app.route('/Lyria/register', methods=['POST'])
+def register():
     data = request.get_json()
-    if not data or 'nome' not in data or 'email' not in data:
-        return jsonify({"erro": "Campos 'nome' e 'email' são obrigatórios"}), 400
+    if not data or 'nome' not in data or 'email' not in data or 'senha' not in data:
+        return jsonify({"erro": "Campos 'nome', 'email' e 'senha' são obrigatórios"}), 400
 
     nome = data['nome']
     email = data['email']
-    persona = data.get('persona', 'professor')
-    senha_hash = data.get('senha_hash')
+    senha = data['senha']
     
+    senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
+    persona = data.get('persona', 'professor')
+
     if persona not in ['professor', 'empresarial']:
         return jsonify({"erro": "Persona inválida. Use 'professor' ou 'empresarial'"}), 400
 
@@ -119,15 +123,28 @@ def criar_usuario_route():
             return jsonify({"erro": "Usuário já existe"}), 409
         return jsonify({"erro": f"Erro ao criar usuário: {str(e)}"}), 500
 
-@app.route('/Lyria/usuarios/<usuarioEmail>', methods=['GET'])
-def get_usuario(usuarioEmail):
+@app.route('/Lyria/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    if not data or 'email' not in data or 'senha' not in data:
+        return jsonify({"erro": "Campos 'email' e 'senha' são obrigatórios"}), 400
+
+    email = data['email']
+    senha = data['senha']
+
     try:
-        result = procurarUsuarioPorEmail(usuarioEmail)
-        if result:
-            return jsonify({"usuario": result})
-        return jsonify({"erro": "Usuário não encontrado"}), 404
+        usuario = procurarUsuarioPorEmail(email)
+        if usuario and bcrypt.check_password_hash(usuario['senha_hash'], senha):
+            # Omitindo a senha_hash da resposta por segurança
+            usuario_sem_senha = {key: value for key, value in usuario.items() if key != 'senha_hash'}
+            return jsonify({
+                "sucesso": "Login bem-sucedido",
+                "usuario": usuario_sem_senha
+            }), 200
+        else:
+            return jsonify({"erro": "Email ou senha inválidos"}), 401
     except Exception as e:
-        return jsonify({"erro": f"Erro ao buscar usuário: {str(e)}"}), 500
+        return jsonify({"erro": f"Erro ao fazer login: {str(e)}"}), 500
 
 @app.route('/Lyria/<usuario>/historico', methods=['GET'])
 def get_historico_recente(usuario):

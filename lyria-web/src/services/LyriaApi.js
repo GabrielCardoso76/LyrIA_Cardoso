@@ -64,23 +64,22 @@ export const getPersona = async (usuario) => {
   }
 };
 
-export const getUsuario = async (email) => {
+export const login = async (credentials) => {
   try {
-    const encodedEmail = encodeURIComponent(email);
-    const response = await api.get(`/Lyria/usuarios/${encodedEmail}`);
+    const response = await api.post("/Lyria/login", credentials);
     return response.data;
   } catch (error) {
-    console.error("Erro ao buscar usuário:", error);
+    console.error("Erro ao fazer login:", error);
     throw error;
   }
 };
 
-export const criarUsuario = async (dadosUsuario) => {
+export const register = async (userData) => {
   try {
-    const response = await api.post("/Lyria/usuarios", dadosUsuario);
+    const response = await api.post("/Lyria/register", userData);
     return response.data;
   } catch (error) {
-    console.error("Erro ao criar usuário:", error);
+    console.error("Erro ao registrar usuário:", error);
     throw error;
   }
 };
