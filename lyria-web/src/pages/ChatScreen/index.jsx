@@ -161,9 +161,6 @@ function ChatContent() {
         const trimmedInput = (typeof textToSend === "string" ? textToSend : input).trim();
         if (!trimmedInput || isBotTyping || isListening) return;
 
-        let chatId = currentChatId;
-
-        // Adiciona a mensagem do usuário à UI otimisticamente
         const userMessage = {
             id: crypto.randomUUID(),
             sender: "user",
@@ -174,24 +171,16 @@ function ChatContent() {
         setIsBotTyping(true);
 
         try {
-            // Se for a primeira mensagem de um chat logado, cria a conversa primeiro
-            if (!chatId && isAuthenticated && user) {
-                const title = trimmedInput.substring(0, 40) + (trimmedInput.length > 40 ? "..." : "");
-                const newConvResponse = await startNewConversation(user.nome, title);
-                if (newConvResponse.sucesso) {
-                    chatId = newConvResponse.conversa_id;
-                    setCurrentChatId(chatId);
-                    fetchConversations(); // Atualiza a lista de conversas no painel
-                } else {
-                    throw new Error("Falha ao criar nova conversa");
-                }
-            }
-
             let response;
-            if (isAuthenticated && user && chatId) {
-                response = await postMessage(user.nome, chatId, trimmedInput);
+            if (isAuthenticated && user) {
+                // Se estiver logado, sempre envia para o endpoint de conversa logada.
+                // O backend cuidará da criação da conversa se currentChatId for nulo.
+                response = await postMessage(user.nome, currentChatId, trimmedInput);
+                if (response.new_conversa_id) {
+                    setCurrentChatId(response.new_conversa_id);
+                    fetchConversations(); // Atualiza a lista de conversas
+                }
             } else {
-                // Usuário não logado, usa o modo anônimo (sem salvar)
                 response = await conversarAnonimo(trimmedInput);
             }
 

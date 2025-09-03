@@ -40,16 +40,6 @@ export const getMessagesForConversation = async (conversationId) => {
   }
 };
 
-export const startNewConversation = async (username, title) => {
-  try {
-    const response = await api.post(`/Lyria/${username}/conversas`, { title });
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao iniciar nova conversa:", error);
-    throw error;
-  }
-};
-
 export const postMessage = async (username, conversationId, question) => {
   try {
     const response = await api.post(`/Lyria/${username}/conversar`, {

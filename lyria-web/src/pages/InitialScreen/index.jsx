@@ -1,15 +1,25 @@
 import { useState } from 'react';
 import './Styles/styles.css';
-import { Link } from 'react-router-dom';
-// import Galaxy from '../../components/Galaxy/Galaxy.jsx'; // <--- REMOVIDO
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext'; // Importa o hook de autenticação
 import { FaTimes } from "react-icons/fa";
 import logoImage from '/img/LogoBranca.png';
 
 function InitialScreen() {
   const [isInfoVisible, setInfoVisible] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [dropdownVisible, setDropdownVisible] = useState(false);
 
   const toggleInfoModal = () => {
     setInfoVisible(!isInfoVisible);
+  };
+
+  const handleLogout = () => {
+    logout();
+    // A navegação pode ser opcional, pois o componente irá re-renderizar
+    // e mostrar o botão "Entrar" novamente.
+    setDropdownVisible(false);
   };
 
   return (
@@ -21,20 +31,35 @@ function InitialScreen() {
           </div>
         </Link>
         <nav>
-          <Link to={'/RegistrationAndLogin'}>Entrar</Link>
+          {isAuthenticated ? (
+            <div className="user-profile-section">
+              <div
+                className="user-indicator"
+                onClick={() => setDropdownVisible(!dropdownVisible)}
+              >
+                {user?.nome?.charAt(0).toUpperCase()}
+              </div>
+              {dropdownVisible && (
+                <div className="user-dropdown-initial">
+                  <button onClick={handleLogout}>Sair</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to={'/RegistrationAndLogin'}>Entrar</Link>
+          )}
           <a href="#">Contato</a>
         </nav>
       </header>
 
-      {/* O <Galaxy /> foi removido daqui porque o GalaxyLayout já o fornece */}
-
+      {/* ... (resto do JSX inalterado) ... */}
       <div className="main-content">
         <div id="frase_efeito">
           <b>Conheça LyrIA</b>
         </div>
         <span id="espaço"></span>
         <div className="container_espaço">
-          <Link className="linkSemEstilo" to={'/loading'}>
+          <Link className="linkSemEstilo" to={'/chat'}>
             <button id="comecar">
               Começar
             </button>
