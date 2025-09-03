@@ -161,15 +161,9 @@ function ChatContent() {
         const trimmedInput = (typeof textToSend === "string" ? textToSend : input).trim();
         if (!trimmedInput || isBotTyping || isListening) return;
 
-        // Se não houver uma conversa ativa, inicie uma nova primeiro (se logado)
-        if (!currentChatId && isAuthenticated) {
-            await startNewChat(trimmedInput); // Passa o input para ser o título
-            // O `startNewChat` agora define o `currentChatId`, então o resto do código
-            // pode ser executado em uma chamada subsequente ou precisa ser reestruturado.
-            // Por simplicidade, vamos deixar o usuário clicar em enviar novamente após a criação do chat.
-            return;
-        }
+        let chatId = currentChatId;
 
+        // Adiciona a mensagem do usuário à UI otimisticamente
         const userMessage = {
             id: crypto.randomUUID(),
             sender: "user",
@@ -178,12 +172,26 @@ function ChatContent() {
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         setIsBotTyping(true);
-    
+
         try {
+            // Se for a primeira mensagem de um chat logado, cria a conversa primeiro
+            if (!chatId && isAuthenticated && user) {
+                const title = trimmedInput.substring(0, 40) + (trimmedInput.length > 40 ? "..." : "");
+                const newConvResponse = await startNewConversation(user.nome, title);
+                if (newConvResponse.sucesso) {
+                    chatId = newConvResponse.conversa_id;
+                    setCurrentChatId(chatId);
+                    fetchConversations(); // Atualiza a lista de conversas no painel
+                } else {
+                    throw new Error("Falha ao criar nova conversa");
+                }
+            }
+
             let response;
-            if (isAuthenticated && user && currentChatId) {
-                response = await postMessage(user.nome, currentChatId, trimmedInput);
+            if (isAuthenticated && user && chatId) {
+                response = await postMessage(user.nome, chatId, trimmedInput);
             } else {
+                // Usuário não logado, usa o modo anônimo (sem salvar)
                 response = await conversarAnonimo(trimmedInput);
             }
 
@@ -199,7 +207,7 @@ function ChatContent() {
             const errorMessage = {
                 id: crypto.randomUUID(),
                 sender: "bot",
-                text: "Desculpe, ocorreu um erro. Tente novamente mais tarde.",
+                text: "Desculpe, ocorreu um erro ao se comunicar com o servidor.",
             };
             setMessages((prev) => [...prev, errorMessage]);
             speakResponse(errorMessage.text);
@@ -217,18 +225,10 @@ function ChatContent() {
 
     const handleMicClick = () => { /* ... (lógica do microfone inalterada) ... */ };
 
-    const startNewChat = async (title) => {
-      if (!isAuthenticated || !user) return;
-      try {
-        const response = await startNewConversation(user.nome, title);
-        if (response.sucesso) {
-          setCurrentChatId(response.conversa_id);
-          setMessages([]);
-          fetchConversations(); // Atualiza a lista de conversas
-        }
-      } catch (error) {
-        console.error("Erro ao iniciar nova conversa", error);
-      }
+    // Limpa a tela para uma nova conversa
+    const startNewChat = () => {
+      setCurrentChatId(null);
+      setMessages([]);
     };
 
     const loadChat = async (id) => {

@@ -5,19 +5,21 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Derivamos o estado de autenticação diretamente do estado do usuário.
+  // Isso garante que eles estejam sempre em sincronia.
+  const isAuthenticated = !!user;
+
   useEffect(() => {
-    // Check for a logged-in user in localStorage on initial load
+    // Verifica se há um usuário salvo no localStorage ao carregar a página
     try {
       const storedUser = localStorage.getItem('lyriaUser');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
-        setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
+      console.error("Falha ao ler o usuário do localStorage", error);
       localStorage.removeItem('lyriaUser');
     } finally {
       setLoading(false);
@@ -28,18 +30,14 @@ export function AuthProvider({ children }) {
     const response = await apiLogin(credentials);
     if (response.sucesso) {
       setUser(response.usuario);
-      setIsAuthenticated(true);
       localStorage.setItem('lyriaUser', JSON.stringify(response.usuario));
     }
-    return response; // Return the full response so the UI can handle success/error messages
+    return response;
   };
 
   const logout = () => {
     setUser(null);
-    setIsAuthenticated(false);
     localStorage.removeItem('lyriaUser');
-    // Here you would typically redirect to the login page
-    // For now, we'll let the component that calls logout handle redirection
   };
 
   const value = {
@@ -50,7 +48,7 @@ export function AuthProvider({ children }) {
     logout,
   };
 
-  // We don't render anything until we've checked for the user in localStorage
+  // Não renderiza a aplicação até que a verificação inicial do localStorage seja concluída
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}
@@ -61,7 +59,7 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
 }
