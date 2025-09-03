@@ -24,7 +24,7 @@ def criar_banco():
     CREATE TABLE IF NOT EXISTS conversas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         usuario_id INTEGER NOT NULL,
-        mensagens TEXT,
+        titulo TEXT,
         iniciado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         status TEXT,
@@ -185,22 +185,17 @@ def carregar_conversas(usuario, limite=12):
     conn.close()
     return [{"pergunta": row["pergunta"], "resposta": row["resposta"]} for row in results]
 
-def salvarMensagem(usuario, pergunta, resposta, modelo_usado=None, tokens=None):
+def salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado=None, tokens=None):
     conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
     cursor = conn.cursor()
+
+    # A lógica de criar/selecionar conversa foi removida daqui.
+    # A função agora assume que um conversa_id válido foi passado.
+
     cursor.execute("""
-        SELECT id FROM conversas 
-        WHERE usuario_id = (SELECT id FROM usuarios WHERE nome=?)
-        ORDER BY iniciado_em DESC LIMIT 1
-    """, (usuario,))
-    conversa = cursor.fetchone()
-    if conversa:
-        conversa_id = conversa[0]
-    else:
-        cursor.execute("""
-            INSERT INTO conversas (usuario_id) VALUES ((SELECT id FROM usuarios WHERE nome=?))
-        """, (usuario,))
-        conversa_id = cursor.lastrowid
+        UPDATE conversas SET atualizado_em = ? WHERE id = ?
+    """, (datetime.now(), conversa_id))
+
     cursor.execute("""
         INSERT INTO user_requests (usuario_id, conversa_id, conteudo)
         VALUES ((SELECT id FROM usuarios WHERE nome=?), ?, ?)
@@ -223,5 +218,70 @@ def salvarMensagem(usuario, pergunta, resposta, modelo_usado=None, tokens=None):
         INSERT INTO memorias (usuario_id, chave, valor, tipo, conversa_origem)
         VALUES ((SELECT id FROM usuarios WHERE nome=?), ?, ?, 'conversa', ?)
     """, (usuario, f"resposta_{response_id}", resposta, conversa_id))
+    conn.commit()
+    conn.close()
+
+def criar_nova_conversa(usuario_id, titulo="Nova Conversa"):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO conversas (usuario_id, titulo, iniciado_em, atualizado_em)
+        VALUES (?, ?, ?, ?)
+    """, (usuario_id, titulo, datetime.now(), datetime.now()))
+    conn.commit()
+    conversa_id = cursor.lastrowid
+    conn.close()
+    return conversa_id
+
+def listar_conversas_por_usuario(usuario_id):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, titulo, atualizado_em FROM conversas
+        WHERE usuario_id = ?
+        ORDER BY atualizado_em DESC
+    """, (usuario_id,))
+    results = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in results]
+
+def carregar_mensagens_da_conversa(conversa_id):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    # Esta query junta as tabelas de requests e responses para reconstruir a conversa
+    cursor.execute("""
+        SELECT
+            ur.conteudo as pergunta,
+            ar.conteudo as resposta,
+            m.criado_em as timestamp
+        FROM mensagens m
+        JOIN user_requests ur ON m.request_id = ur.id
+        JOIN ai_responses ar ON m.response_id = ar.id
+        WHERE m.conversa_id = ?
+        ORDER BY m.criado_em ASC
+    """, (conversa_id,))
+    results = cursor.fetchall()
+    conn.close()
+    # Formata a saída para ser uma lista de pares pergunta/resposta
+    mensagens = []
+    for row in results:
+        mensagens.append({"sender": "user", "text": row["pergunta"], "timestamp": row["timestamp"]})
+        mensagens.append({"sender": "bot", "text": row["resposta"], "timestamp": row["timestamp"]})
+    return mensagens
+
+def deletar_conversa(conversa_id):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    cursor = conn.cursor()
+    # Deletar em cascata não é padrão no sqlite, então deletamos de cada tabela
+    cursor.execute("DELETE FROM mensagens WHERE conversa_id = ?", (conversa_id,))
+    cursor.execute("DELETE FROM user_requests WHERE conversa_id = ?", (conversa_id,))
+    # Ai_responses são deletadas em cascata a partir de user_requests se o foreign key for configurado para isso
+    # mas vamos garantir.
+    cursor.execute("""
+        DELETE FROM ai_responses WHERE request_id IN (SELECT id FROM user_requests WHERE conversa_id = ?)
+    """, (conversa_id,))
+    cursor.execute("DELETE FROM conversas WHERE id = ?", (conversa_id,))
     conn.commit()
     conn.close()

@@ -1,3 +1,4 @@
+import sqlite3
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
@@ -10,8 +11,12 @@ from banco.banco import (
     pegarHistorico,
     criar_banco,
     salvarMensagem,
-    carregar_conversas,
-    carregar_memorias
+    carregar_memorias,
+    criar_nova_conversa,
+    listar_conversas_por_usuario,
+    carregar_mensagens_da_conversa,
+    deletar_conversa,
+    DB_NOME
 )
 from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
 from waitress import serve
@@ -40,34 +45,92 @@ def conversarSemConta():
 @app.route('/Lyria/<usuario>/conversar', methods=['POST'])
 def conversar(usuario):
     data = request.get_json()
-    if not data or 'pergunta' not in data:
-        return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
+    if not data or 'pergunta' not in data or 'conversa_id' not in data:
+        return jsonify({"erro": "Campos 'pergunta' e 'conversa_id' são obrigatórios"}), 400
+
     pergunta = data['pergunta']
+    conversa_id = data['conversa_id']
+
     persona_tipo = pegarPersonaEscolhida(usuario)
     if not persona_tipo:
         return jsonify({"erro": "Usuário não tem persona definida"}), 400
     
     try:
-        conversas = carregar_conversas(usuario)
+        # A lógica de carregar conversas antigas para o contexto foi simplificada.
+        # Agora, o contexto pode ser construído a partir das mensagens da conversa atual.
+        mensagens_atuais = carregar_mensagens_da_conversa(conversa_id)
+        contexto_chat = [(msg['text']) for msg in mensagens_atuais]
+
         memorias = carregar_memorias(usuario)
         contexto_web = None
         if deve_buscar_na_web(pergunta):
             contexto_web = buscar_na_web(pergunta)
+
         persona = get_persona_texto(persona_tipo)
-        resposta = perguntar_ollama(pergunta, conversas, memorias, persona, contexto_web)
-        salvarMensagem(usuario, pergunta, resposta, modelo_usado="ollama", tokens=None)
+        resposta = perguntar_ollama(pergunta, contexto_chat, memorias, persona, contexto_web)
+
+        # Salva a nova pergunta e resposta na conversa especificada
+        salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado="ollama", tokens=None)
+
         return jsonify({"resposta": resposta})
         
     except Exception as e:
         return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
 
-@app.route('/Lyria/conversas/<usuario>', methods=['GET'])
-def get_conversas(usuario):
+@app.route('/Lyria/<usuario>/conversas', methods=['GET'])
+def get_conversas_usuario(usuario):
     try:
-        conversas = carregar_conversas(usuario)
+        conn = sqlite3.connect(DB_NOME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM usuarios WHERE nome = ?", (usuario,))
+        user_row = cursor.fetchone()
+        conn.close()
+
+        if not user_row:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+
+        usuario_id = user_row[0]
+        conversas = listar_conversas_por_usuario(usuario_id)
         return jsonify({"conversas": conversas})
     except Exception as e:
         return jsonify({"erro": f"Erro ao buscar conversas: {str(e)}"}), 500
+
+@app.route('/Lyria/<usuario>/conversas', methods=['POST'])
+def post_nova_conversa(usuario):
+    data = request.get_json()
+    titulo = data.get('titulo', 'Nova Conversa')
+
+    try:
+        conn = sqlite3.connect(DB_NOME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM usuarios WHERE nome = ?", (usuario,))
+        user_row = cursor.fetchone()
+        conn.close()
+
+        if not user_row:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+
+        usuario_id = user_row[0]
+        conversa_id = criar_nova_conversa(usuario_id, titulo)
+        return jsonify({"sucesso": "Conversa criada", "conversa_id": conversa_id}), 201
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao criar nova conversa: {str(e)}"}), 500
+
+@app.route('/Lyria/conversas/<int:conversa_id>/mensagens', methods=['GET'])
+def get_mensagens_conversa(conversa_id):
+    try:
+        mensagens = carregar_mensagens_da_conversa(conversa_id)
+        return jsonify({"mensagens": mensagens})
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao carregar mensagens: {str(e)}"}), 500
+
+@app.route('/Lyria/conversas/<int:conversa_id>', methods=['DELETE'])
+def delete_conversa(conversa_id):
+    try:
+        deletar_conversa(conversa_id)
+        return jsonify({"sucesso": "Conversa deletada"}), 200
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao deletar conversa: {str(e)}"}), 500
 
 @app.route('/Lyria/<usuario>/PersonaEscolhida', methods=['GET'])
 def get_persona_escolhida(usuario):

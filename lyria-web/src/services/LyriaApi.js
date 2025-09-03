@@ -10,34 +10,55 @@ export const conversarAnonimo = async (pergunta) => {
   }
 };
 
-export const getConversas = async (usuario) => {
+export const deleteConversation = async (conversationId) => {
   try {
-    const response = await api.get(`/Lyria/conversas/${usuario}`);
+    const response = await api.delete(`/Lyria/conversas/${conversationId}`);
     return response.data;
   } catch (error) {
-    console.error("Erro ao buscar conversas:", error);
+    console.error("Erro ao deletar conversa:", error);
     throw error;
   }
 };
 
-export const getHistorico = async (usuario) => {
+export const getConversations = async (username) => {
   try {
-    const response = await api.get(`/Lyria/${usuario}/historico`);
+    const response = await api.get(`/Lyria/${username}/conversas`);
     return response.data;
   } catch (error) {
-    console.error("Erro ao buscar histórico:", error);
+    console.error("Erro ao buscar lista de conversas:", error);
     throw error;
   }
 };
 
-export const conversarLogado = async (usuario, pergunta) => {
+export const getMessagesForConversation = async (conversationId) => {
   try {
-    const response = await api.post(`/Lyria/${usuario}/conversar`, {
-      pergunta,
+    const response = await api.get(`/Lyria/conversas/${conversationId}/mensagens`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao carregar mensagens da conversa:", error);
+    throw error;
+  }
+};
+
+export const startNewConversation = async (username, title) => {
+  try {
+    const response = await api.post(`/Lyria/${username}/conversas`, { title });
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao iniciar nova conversa:", error);
+    throw error;
+  }
+};
+
+export const postMessage = async (username, conversationId, question) => {
+  try {
+    const response = await api.post(`/Lyria/${username}/conversar`, {
+      pergunta: question,
+      conversa_id: conversationId,
     });
     return response.data;
   } catch (error) {
-    console.error("Erro ao conversar com a Lyria (logado):", error);
+    console.error("Erro ao enviar mensagem:", error);
     throw error;
   }
 };

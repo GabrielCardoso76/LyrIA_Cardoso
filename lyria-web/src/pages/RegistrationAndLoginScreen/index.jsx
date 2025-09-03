@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { login, register } from "../../services/LyriaApi";
+import { register } from "../../services/LyriaApi"; // Apenas o register é necessário aqui
+import { useAuth } from "../../context/AuthContext"; // Importa o hook de autenticação
+import Alert from "../../components/Alert";
 import "./Styles/styles.css";
 
 function LoginRegisterPage() {
@@ -9,6 +11,7 @@ function LoginRegisterPage() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth(); // Pega a função de login do contexto
 
   // Form state
   const [nome, setNome] = useState("");
@@ -17,28 +20,30 @@ function LoginRegisterPage() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
 
   // Feedback state
-  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState({ message: "", type: "" });
   const [loading, setLoading] = useState(false);
+
+  const clearFeedback = () => setFeedback({ message: "", type: "" });
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
-    setError("");
+    clearFeedback();
   };
 
   const handleLogin = async () => {
     setLoading(true);
-    setError("");
+    clearFeedback();
     try {
+      // Usa a função de login do contexto
       const response = await login({ email, senha });
       if (response.sucesso) {
-        // Em uma aplicação real, você salvaria o token/usuário no contexto/localStorage
-        console.log("Login bem-sucedido:", response.usuario);
-        navigate("/"); // Redireciona para a página principal
+        navigate("/"); // O AuthContext já cuidou de salvar o usuário
       } else {
-        setError(response.erro || "Erro ao fazer login.");
+        setFeedback({ message: response.erro || "Erro ao fazer login.", type: "error" });
       }
     } catch (err) {
-      setError(err.response?.data?.erro || "Erro de conexão. Tente novamente.");
+      // O erro já é tratado no contexto, mas podemos exibir uma mensagem genérica
+      setFeedback({ message: err.response?.data?.erro || "Erro de conexão. Tente novamente.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -46,22 +51,21 @@ function LoginRegisterPage() {
 
   const handleRegister = async () => {
     if (senha !== confirmarSenha) {
-      setError("As senhas não coincidem.");
+      setFeedback({ message: "As senhas não coincidem.", type: "error" });
       return;
     }
     setLoading(true);
-    setError("");
+    clearFeedback();
     try {
       const response = await register({ nome, email, senha });
       if (response.sucesso) {
-        // Sucesso no cadastro, muda para a tela de login
         setIsLogin(true);
-        setError("Cadastro realizado com sucesso! Faça o login para continuar.");
+        setFeedback({ message: "Cadastro realizado com sucesso! Faça o login para continuar.", type: "success" });
       } else {
-        setError(response.erro || "Erro ao registrar.");
+        setFeedback({ message: response.erro || "Erro ao registrar.", type: "error" });
       }
     } catch (err) {
-      setError(err.response?.data?.erro || "Erro de conexão. Tente novamente.");
+      setFeedback({ message: err.response?.data?.erro || "Erro de conexão. Tente novamente.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -146,7 +150,7 @@ function LoginRegisterPage() {
                 <a href="#" className="forgot-password">Esqueceu sua senha?</a>
             )}
 
-            {error && <p className="error-message">{error}</p>}
+            <Alert message={feedback.message} type={feedback.type} />
 
             <button type="submit" className="submit-btn" disabled={loading}>
               {loading ? "CARREGANDO..." : (isLogin ? "ENTRAR" : "CADASTRAR")}
