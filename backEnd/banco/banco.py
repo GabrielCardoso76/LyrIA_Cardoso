@@ -80,6 +80,13 @@ def criar_banco():
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
     );
     """)
+    
+    # Adiciona a coluna 'titulo' se ela não existir na tabela 'conversas'
+    cursor.execute("PRAGMA table_info(conversas)")
+    colunas = [info[1] for info in cursor.fetchall()]
+    if 'titulo' not in colunas:
+        cursor.execute("ALTER TABLE conversas ADD COLUMN titulo TEXT;")
+
     conn.commit()
     conn.close()
 
