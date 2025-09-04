@@ -189,37 +189,52 @@ def salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado=None, 
     conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
     cursor = conn.cursor()
 
-    # A lógica de criar/selecionar conversa foi removida daqui.
-    # A função agora assume que um conversa_id válido foi passado.
+    try:
+        # Etapa 1: Obter o ID do usuário de forma segura
+        cursor.execute("SELECT id FROM usuarios WHERE nome = ?", (usuario,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            raise ValueError(f"Usuário '{usuario}' não encontrado ao tentar salvar mensagem.")
+        usuario_id = user_row[0]
 
-    cursor.execute("""
-        UPDATE conversas SET atualizado_em = ? WHERE id = ?
-    """, (datetime.now(), conversa_id))
+        # Etapa 2: Atualizar a conversa e inserir as novas mensagens
+        cursor.execute("UPDATE conversas SET atualizado_em = ? WHERE id = ?", (datetime.now(), conversa_id))
 
-    cursor.execute("""
-        INSERT INTO user_requests (usuario_id, conversa_id, conteudo)
-        VALUES ((SELECT id FROM usuarios WHERE nome=?), ?, ?)
-    """, (usuario, conversa_id, pergunta))
-    request_id = cursor.lastrowid
-    cursor.execute("""
-        INSERT INTO ai_responses (request_id, conteudo, modelo_usado, tokens)
-        VALUES (?, ?, ?, ?)
-    """, (request_id, resposta, modelo_usado, tokens))
-    response_id = cursor.lastrowid
-    cursor.execute("""
-        INSERT INTO mensagens (conversa_id, request_id, response_id)
-        VALUES (?, ?, ?)
-    """, (conversa_id, request_id, response_id))
-    cursor.execute("""
-        INSERT INTO memorias (usuario_id, chave, valor, tipo, conversa_origem)
-        VALUES ((SELECT id FROM usuarios WHERE nome=?), ?, ?, 'conversa', ?)
-    """, (usuario, f"pergunta_{request_id}", pergunta, conversa_id))
-    cursor.execute("""
-        INSERT INTO memorias (usuario_id, chave, valor, tipo, conversa_origem)
-        VALUES ((SELECT id FROM usuarios WHERE nome=?), ?, ?, 'conversa', ?)
-    """, (usuario, f"resposta_{response_id}", resposta, conversa_id))
-    conn.commit()
-    conn.close()
+        cursor.execute(
+            "INSERT INTO user_requests (usuario_id, conversa_id, conteudo) VALUES (?, ?, ?)",
+            (usuario_id, conversa_id, pergunta)
+        )
+        request_id = cursor.lastrowid
+
+        cursor.execute(
+            "INSERT INTO ai_responses (request_id, conteudo, modelo_usado, tokens) VALUES (?, ?, ?, ?)",
+            (request_id, resposta, modelo_usado, tokens)
+        )
+        response_id = cursor.lastrowid
+
+        cursor.execute(
+            "INSERT INTO mensagens (conversa_id, request_id, response_id) VALUES (?, ?, ?)",
+            (conversa_id, request_id, response_id)
+        )
+
+        # Etapa 3: Inserir nas memórias usando o usuario_id já obtido
+        cursor.execute(
+            "INSERT INTO memorias (usuario_id, chave, valor, tipo, conversa_origem) VALUES (?, ?, ?, 'conversa', ?)",
+            (usuario_id, f"pergunta_{request_id}", pergunta, conversa_id)
+        )
+        cursor.execute(
+            "INSERT INTO memorias (usuario_id, chave, valor, tipo, conversa_origem) VALUES (?, ?, ?, 'conversa', ?)",
+            (usuario_id, f"resposta_{response_id}", resposta, conversa_id)
+        )
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro em salvarMensagem: {e}")
+        raise
+    finally:
+        conn.close()
 
 def criar_nova_conversa(usuario_id, titulo="Nova Conversa"):
     conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)

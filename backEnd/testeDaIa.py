@@ -87,7 +87,9 @@ def perguntar_ollama(pergunta, conversas, memorias, persona, contexto_web=None):
         
     except Exception as e:
         print(f"Erro inesperado: {e}")
-        return "Erro interno. Tente novamente em alguns instantes."
+        # Em vez de retornar uma string de erro, propaga o erro.
+        # Isso impede que o erro seja salvo como uma mensagem válida no histórico.
+        raise ConnectionError(f"Falha ao se comunicar com o serviço de IA: {e}")
 
 def verificar_ollama_status():
     try:

@@ -229,12 +229,15 @@ function ChatContent() {
     try {
       let response;
       if (isAuthenticated && user) {
-        // Se estiver logado, sempre envia para o endpoint de conversa logada.
-        // O backend cuidará da criação da conversa se currentChatId for nulo.
-        response = await postMessage(user.nome, currentChatId, trimmedInput);
-        if (response.new_conversa_id) {
+        // Usa o ID da conversa atual. Se for nulo, o backend criará uma nova.
+        const chatIdToUse = currentChatId;
+        response = await postMessage(user.nome, chatIdToUse, trimmedInput);
+
+        // Se uma nova conversa foi criada, o backend retorna um novo ID.
+        // Atualizamos nosso estado para que a *próxima* mensagem use esse novo ID.
+        if (response.new_conversa_id && !chatIdToUse) {
           setCurrentChatId(response.new_conversa_id);
-          fetchConversations(); // Atualiza a lista de conversas
+          fetchConversations();
         }
       } else {
         response = await conversarAnonimo(trimmedInput);
@@ -244,6 +247,7 @@ function ChatContent() {
         id: crypto.randomUUID(),
         sender: "bot",
         text: response.resposta,
+        animate: true, // Animar apenas novas mensagens do bot
       };
       setMessages((prev) => [...prev, botMessage]);
       speakResponse(response.resposta);
@@ -281,7 +285,12 @@ function ChatContent() {
     try {
       const response = await getMessagesForConversation(id);
       setCurrentChatId(id);
-      setMessages(response.mensagens || []);
+      // Adiciona a propriedade 'animate: false' para mensagens carregadas
+      const historicalMessages = response.mensagens.map((msg) => ({
+        ...msg,
+        animate: false,
+      }));
+      setMessages(historicalMessages || []);
       setHistoryVisible(false);
     } catch (error) {
       console.error("Erro ao carregar conversa", error);
@@ -374,7 +383,10 @@ function ChatContent() {
                   <span className="sender-name">
                     {msg.sender === "bot" ? "LyrIA" : "Você"}
                   </span>
-                  <AnimatedBotMessage fullText={msg.text} />
+                  <AnimatedBotMessage
+                    fullText={msg.text}
+                    animate={msg.animate}
+                  />
                   {msg.sender === "bot" && (
                     <button
                       className="copy-btn"
