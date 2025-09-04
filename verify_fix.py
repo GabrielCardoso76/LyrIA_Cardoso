@@ -22,6 +22,9 @@ def verify_history_ux(page: Page):
     expect(history_button_enabled).to_be_enabled()
     history_button_enabled.click()
 
+    # Give the animation time to complete
+    page.wait_for_timeout(1000) # 1 second
+
     # 4. Take a screenshot of the open history panel
     page.screenshot(path="history_panel_open.png")
 
