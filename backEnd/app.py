@@ -40,6 +40,10 @@ def conversarSemConta():
         return jsonify({"resposta": resposta})
         
     except Exception as e:
+        import traceback
+        print(f"--- ERRO DETALHADO NO ENDPOINT /conversar para o usuário: {usuario} ---")
+        traceback.print_exc()
+        print("------------------------------------------------------------------")
         return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
 
 @app.route('/Lyria/<usuario>/conversar', methods=['POST'])
@@ -110,6 +114,10 @@ def get_conversas_usuario(usuario):
         conversas = listar_conversas_por_usuario(usuario_id)
         return jsonify({"conversas": conversas})
     except Exception as e:
+        import traceback
+        print(f"--- ERRO DETALHADO NO ENDPOINT /conversas para o usuário: {usuario} ---")
+        traceback.print_exc()
+        print("------------------------------------------------------------------")
         return jsonify({"erro": f"Erro ao buscar conversas: {str(e)}"}), 500
 
 @app.route('/Lyria/conversas/<int:conversa_id>/mensagens', methods=['GET'])
