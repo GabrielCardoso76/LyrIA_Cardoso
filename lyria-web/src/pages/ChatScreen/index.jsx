@@ -200,9 +200,10 @@ function ChatContent() {
 
   const speakResponse = (text) => {
     if (!isSpeechEnabled) return;
+    const plainText = stripMarkdown(text);
     const synthesizer = new SpeechSynthesizer(speechConfig);
     synthesizer.speakTextAsync(
-      text,
+      plainText,
       () => synthesizer.close(),
       (error) => {
         console.error("Erro na síntese de voz:", error);
@@ -312,6 +313,24 @@ function ChatContent() {
 
   const toggleSpeech = () => setIsSpeechEnabled((prev) => !prev);
   const handleVoiceChange = (event) => setSelectedVoice(event.target.value);
+
+  const stripMarkdown = (text) => {
+    return text
+      // Remove code blocks
+      .replace(/```[\s\S]*?```/g, ' ')
+      // Remove inline code
+      .replace(/`/g, '')
+      // Remove bold and italics
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      // Remove headings
+      .replace(/#{1,6}\s/g, '')
+      // Remove links, keeping the text
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+      // Remove images
+      .replace(/!\[[^\]]*\]\([^\)]+\)/g, ' ')
+      .trim();
+  };
 
   return (
     <>
