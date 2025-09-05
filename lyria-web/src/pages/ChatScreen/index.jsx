@@ -152,7 +152,7 @@ function ChatContent() {
   const [currentChatId, setCurrentChatId] = useState(null);
 
   const [isListening, setIsListening] = useState(false);
-  const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
 
   const fetchConversations = async () => {
