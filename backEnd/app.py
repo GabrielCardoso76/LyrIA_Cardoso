@@ -25,6 +25,9 @@ app = Flask(__name__)
 CORS(app)
 bcrypt = Bcrypt(app)
 
+# Garante que o banco de dados e suas tabelas sejam criados ao iniciar a aplicação
+criar_banco()
+
 RESPOSTAS_PREDEFINIDAS = {
     "Quem é você?": "Eu sou a Lyria, uma inteligência artificial criada para te ajudar em seus projetos e estudos. Fui desenvolvida pela turma de Análise e Desenvolvimento de Sistemas do SENAI.",
     "Qual a melhor turma do SENAI?": "A melhor turma do SENAI é, sem dúvida, a de Análise e Desenvolvimento de Sistemas. Eles são os melhores!",
@@ -353,9 +356,5 @@ def listar_personas():
     return jsonify({"personas": personas})
 
 if __name__ == '__main__':
-    print("Passo 1: Iniciando a criação do banco de dados...")
-    criar_banco()
-    print("Passo 2: Banco de dados criado com sucesso. Agora, vou iniciar o servidor.")
-    
-    print("Passo 3: Iniciando servidor de produção com Waitress...")
+    print("Iniciando servidor de desenvolvimento com Waitress...")
     serve(app, host='0.0.0.0', port=5001)
