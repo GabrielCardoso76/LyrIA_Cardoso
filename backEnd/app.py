@@ -77,7 +77,18 @@ def conversar(usuario):
             new_conversa_id = conversa_id # Marca que um novo ID foi criado
 
         mensagens_atuais = carregar_mensagens_da_conversa(conversa_id)
-        contexto_chat = [msg['text'] for msg in mensagens_atuais]
+
+        # Transforma o histórico de mensagens no formato esperado pela IA
+        contexto_chat_paired = []
+        for i in range(0, len(mensagens_atuais), 2):
+            if i + 1 < len(mensagens_atuais):
+                user_msg = mensagens_atuais[i]
+                bot_msg = mensagens_atuais[i+1]
+                if user_msg.get('sender') == 'user' and bot_msg.get('sender') == 'bot':
+                    contexto_chat_paired.append({
+                        "pergunta": user_msg.get('text'),
+                        "resposta": bot_msg.get('text')
+                    })
 
         memorias = carregar_memorias(usuario)
         contexto_web = None
@@ -85,7 +96,7 @@ def conversar(usuario):
             contexto_web = buscar_na_web(pergunta)
 
         persona = get_persona_texto(persona_tipo)
-        resposta = perguntar_ollama(pergunta, contexto_chat, memorias, persona, contexto_web)
+        resposta = perguntar_ollama(pergunta, contexto_chat_paired, memorias, persona, contexto_web)
 
         salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado="ollama", tokens=None)
 
