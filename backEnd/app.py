@@ -64,10 +64,6 @@ def conversar(usuario):
         return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
 
     pergunta = data['pergunta']
-
-    if pergunta in RESPOSTAS_PREDEFINIDAS:
-        return jsonify({"resposta": RESPOSTAS_PREDEFINIDAS[pergunta]})
-
     conversa_id = data.get('conversa_id') # ID da conversa é opcional
     new_conversa_id = None
 
@@ -76,8 +72,8 @@ def conversar(usuario):
         return jsonify({"erro": "Usuário não tem persona definida"}), 400
     
     try:
+        # Lógica de criação de conversa movida para antes para garantir que temos um ID
         if not conversa_id:
-            # Lógica para criar uma nova conversa se nenhum ID for fornecido
             conn = sqlite3.connect(DB_NOME)
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM usuarios WHERE nome = ?", (usuario,))
@@ -89,21 +85,24 @@ def conversar(usuario):
             usuario_id = user_row[0]
             titulo = pergunta[:40] + '...' if len(pergunta) > 40 else pergunta
             conversa_id = criar_nova_conversa(usuario_id, titulo)
-            new_conversa_id = conversa_id # Marca que um novo ID foi criado
+            new_conversa_id = conversa_id
 
-        mensagens_atuais = carregar_mensagens_da_conversa(conversa_id)
-        contexto_chat = [msg['text'] for msg in mensagens_atuais]
+        # Agora, determinamos a resposta
+        if pergunta in RESPOSTAS_PREDEFINIDAS:
+            resposta = RESPOSTAS_PREDEFINIDAS[pergunta]
+        else:
+            # A lógica original de busca na web e IA (agora desativada) iria aqui
+            contexto_web = None
+            if deve_buscar_na_web(pergunta):
+                contexto_web = buscar_na_web(pergunta)
 
-        memorias = carregar_memorias(usuario)
-        contexto_web = None
-        if deve_buscar_na_web(pergunta):
-            contexto_web = buscar_na_web(pergunta)
+            # Chamada para a IA está desativada, então usamos a resposta padrão
+            resposta = "Desculpe, não consigo responder a essa pergunta no momento."
 
-        persona = get_persona_texto(persona_tipo)
-        resposta = "Desculpe, não consigo responder a essa pergunta no momento."
+        # Salvamos a pergunta e a resposta no histórico
+        salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado="predefinido", tokens=None)
 
-        salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado="ollama", tokens=None)
-
+        # Preparamos e enviamos a resposta JSON
         json_response = {"resposta": resposta}
         if new_conversa_id:
             json_response["new_conversa_id"] = new_conversa_id
@@ -111,6 +110,10 @@ def conversar(usuario):
         return jsonify(json_response)
         
     except Exception as e:
+        import traceback
+        print(f"--- ERRO DETALHADO NO ENDPOINT /conversar para o usuário: {usuario} ---")
+        traceback.print_exc()
+        print("------------------------------------------------------------------")
         return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
 
 @app.route('/Lyria/<usuario>/conversas', methods=['GET'])
