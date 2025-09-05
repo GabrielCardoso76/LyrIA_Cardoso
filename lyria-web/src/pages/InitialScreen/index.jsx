@@ -2,23 +2,35 @@ import { useState } from 'react';
 import './Styles/styles.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext'; // Importa o hook de autenticação
-import { FaTimes } from "react-icons/fa";
+import { FaTimes, FaWhatsapp } from "react-icons/fa";
 import logoImage from '/img/LogoBranca.png';
 
 function InitialScreen() {
   const [isInfoVisible, setInfoVisible] = useState(false);
+  const [isContactModalVisible, setContactModalVisible] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  const teamMembers = [
+    { name: "👨‍💻 Antony", number: null },
+    { name: "👨‍💻 Gabriel Cardoso", number: "16993463038" },
+    { name: "👨‍💻 João Gabriel", number: null },
+    { name: "👩‍💻 Juliana", number: null },
+    { name: "👩‍💻 Raissa", number: null },
+    { name: "👩‍💻 Vitoria", number: null },
+  ];
 
   const toggleInfoModal = () => {
     setInfoVisible(!isInfoVisible);
   };
 
+  const toggleContactModal = () => {
+    setContactModalVisible(!isContactModalVisible);
+  };
+
   const handleLogout = () => {
     logout();
-    // A navegação pode ser opcional, pois o componente irá re-renderizar
-    // e mostrar o botão "Entrar" novamente.
     setDropdownVisible(false);
   };
 
@@ -48,11 +60,10 @@ function InitialScreen() {
           ) : (
             <Link to={'/RegistrationAndLogin'}>Entrar</Link>
           )}
-          <a href="#">Contato</a>
+          <button onClick={toggleContactModal} className="nav-button">Contato</button>
         </nav>
       </header>
 
-      {/* ... (resto do JSX inalterado) ... */}
       <div className="main-content">
         <div id="frase_efeito">
           <b>Conheça LyrIA</b>
@@ -89,6 +100,36 @@ function InitialScreen() {
               <li>Assistência criativa para seus projetos.</li>
               <li>Interface amigável e personalizável.</li>
               <li>Integração com diversas ferramentas.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {isContactModalVisible && (
+        <div className="info-modal-backdrop">
+          <div className="info-modal-content">
+            <button className="close-modal-btn" onClick={toggleContactModal}>
+              <FaTimes />
+            </button>
+            <h2>Nossa Equipe</h2>
+            <ul className="team-list">
+              {teamMembers.map((member, index) => (
+                <li key={index} className="team-member">
+                  <span>{member.name}</span>
+                  {member.number ? (
+                    <a
+                      href={`https://wa.me/55${member.number}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="whatsapp-link"
+                    >
+                      <FaWhatsapp />
+                    </a>
+                  ) : (
+                    <span className="no-number"></span>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
