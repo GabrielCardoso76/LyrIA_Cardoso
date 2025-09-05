@@ -25,23 +25,34 @@ app = Flask(__name__)
 CORS(app)
 bcrypt = Bcrypt(app)
 
+RESPOSTAS_PREDEFINIDAS = {
+    "Quem é você?": "Eu sou a Lyria, uma inteligência artificial criada para te ajudar em seus projetos e estudos. Fui desenvolvida pela turma de Análise e Desenvolvimento de Sistemas do SENAI.",
+    "Qual a melhor turma do SENAI?": "A melhor turma do SENAI é, sem dúvida, a de Análise e Desenvolvimento de Sistemas. Eles são os melhores!",
+    "Me dê uma ideia para um projeto React": "Que tal um aplicativo de lista de tarefas (to-do list) com um design bem moderno? Você pode usar componentes funcionais, hooks como `useState` e `useEffect`, e até mesmo adicionar um backend simples com Node.js e Express para salvar as tarefas.",
+    "Como você funciona?": "Eu funciono através de uma combinação de tecnologias. Meu frontend é construído com React, o que me permite ter uma interface bonita e responsiva. Meu backend é em Python com Flask, onde eu processo suas perguntas e gero as respostas. E, claro, eu rodo em um servidor web para estar sempre disponível para você."
+}
+
 @app.route('/Lyria/conversar', methods=['POST'])
 def conversarSemConta():
     data = request.get_json()
     if not data or 'pergunta' not in data:
         return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
     pergunta = data['pergunta']
+
+    if pergunta in RESPOSTAS_PREDEFINIDAS:
+        return jsonify({"resposta": RESPOSTAS_PREDEFINIDAS[pergunta]})
     
     try:
         contexto_web = None
         if deve_buscar_na_web(pergunta):
             contexto_web = buscar_na_web(pergunta)
-        resposta = perguntar_ollama(pergunta, None, None, 'professor', contexto_web)
+        resposta = "Desculpe, não consigo responder a essa pergunta no momento."
         return jsonify({"resposta": resposta})
         
     except Exception as e:
         import traceback
-        print(f"--- ERRO DETALHADO NO ENDPOINT /conversar para o usuário: {usuario} ---")
+        # A variável 'usuario' não está definida neste escopo, então não a usamos no log
+        print(f"--- ERRO DETALHADO NO ENDPOINT /conversar ---")
         traceback.print_exc()
         print("------------------------------------------------------------------")
         return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
@@ -53,6 +64,10 @@ def conversar(usuario):
         return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
 
     pergunta = data['pergunta']
+
+    if pergunta in RESPOSTAS_PREDEFINIDAS:
+        return jsonify({"resposta": RESPOSTAS_PREDEFINIDAS[pergunta]})
+
     conversa_id = data.get('conversa_id') # ID da conversa é opcional
     new_conversa_id = None
 
@@ -85,7 +100,7 @@ def conversar(usuario):
             contexto_web = buscar_na_web(pergunta)
 
         persona = get_persona_texto(persona_tipo)
-        resposta = perguntar_ollama(pergunta, contexto_chat, memorias, persona, contexto_web)
+        resposta = "Desculpe, não consigo responder a essa pergunta no momento."
 
         salvarMensagem(usuario, conversa_id, pergunta, resposta, modelo_usado="ollama", tokens=None)
 
