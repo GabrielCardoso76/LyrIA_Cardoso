@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { updateUserProfile } from '../../services/LyriaApi';
 import { baseURL } from '../../services/api';
+import { FiUser } from 'react-icons/fi';
 import './styles.css';
 
 const ProfileScreen = () => {
@@ -107,7 +108,13 @@ const ProfileScreen = () => {
 
         <form onSubmit={handleUpdateProfile} className="profile-form">
           <div className="profile-picture-section">
-            <img src={previewImage || 'https://via.placeholder.com/150'} alt="Profile" className="profile-picture" />
+            {previewImage ? (
+              <img src={previewImage} alt="Profile" className="profile-picture" />
+            ) : (
+              <div className="profile-picture-placeholder">
+                <FiUser size={60} />
+              </div>
+            )}
             <input type="file" id="file-upload" onChange={handleImageChange} accept="image/*" />
             <label htmlFor="file-upload" className="file-upload-label">
               Mudar Foto
