@@ -36,10 +36,11 @@ function LoginRegisterPage() {
     setLoading(true);
     try {
       const response = await login({ email, senha });
-      if (!response.sucesso) {
-        addToast(response.erro || "Erro ao fazer login.", "error");
-      } else {
+      if (response.sucesso) {
+        addToast("Login bem-sucedido! Redirecionando...", "success");
         navigate("/");
+      } else {
+        addToast(response.erro || "Erro ao fazer login.", "error");
       }
     } catch (err) {
       addToast(err.response?.data?.erro || "Erro de conexão. Tente novamente.", "error");

@@ -157,6 +157,7 @@ function ChatContent() {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
   const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
+  const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
 
   const fetchConversations = async () => {
     if (isAuthenticated && user) {
@@ -281,8 +282,12 @@ function ChatContent() {
 
   // Limpa a tela para uma nova conversa
   const startNewChat = () => {
-    setCurrentChatId(null);
-    setMessages([]);
+    setChatBodyAnimationClass("fade-out");
+    setTimeout(() => {
+      setCurrentChatId(null);
+      setMessages([]);
+      setChatBodyAnimationClass("fade-in");
+    }, 500); // Duração da animação de fade-out
   };
 
   const loadChat = async (id) => {
@@ -389,7 +394,7 @@ function ChatContent() {
           </div>
         </header>
 
-        <div className="galaxy-chat-body">
+        <div className={`galaxy-chat-body ${chatBodyAnimationClass}`}>
           {messages.length === 0 ? (
             <PromptSuggestions onSuggestionClick={handleSend} />
           ) : (
