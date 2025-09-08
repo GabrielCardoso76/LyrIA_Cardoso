@@ -1,17 +1,19 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { register } from "../../services/LyriaApi"; // Apenas o register é necessário aqui
-import { useAuth } from "../../context/AuthContext"; // Importa o hook de autenticação
-import Alert from "../../components/Alert";
+import { register } from "../../services/LyriaApi";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import "./Styles/styles.css";
 
 function LoginRegisterPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [animationClass, setAnimationClass] = useState("fade-in");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth(); // Pega a função de login do contexto
+  const { login } = useAuth();
+  const { addToast } = useToast();
 
   // Form state
   const [nome, setNome] = useState("");
@@ -19,31 +21,28 @@ function LoginRegisterPage() {
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
 
-  // Feedback state
-  const [feedback, setFeedback] = useState({ message: "", type: "" });
+  // Loading state
   const [loading, setLoading] = useState(false);
 
-  const clearFeedback = () => setFeedback({ message: "", type: "" });
-
   const toggleForm = () => {
-    setIsLogin(!isLogin);
-    clearFeedback();
+    setAnimationClass("fade-out");
+    setTimeout(() => {
+      setIsLogin(!isLogin);
+      setAnimationClass("fade-in");
+    }, 400); // Deve corresponder à duração da animação de fade-out
   };
 
   const handleLogin = async () => {
     setLoading(true);
-    clearFeedback();
     try {
-      // Usa a função de login do contexto
       const response = await login({ email, senha });
-      if (response.sucesso) {
-        navigate("/"); // O AuthContext já cuidou de salvar o usuário
+      if (!response.sucesso) {
+        addToast(response.erro || "Erro ao fazer login.", "error");
       } else {
-        setFeedback({ message: response.erro || "Erro ao fazer login.", type: "error" });
+        navigate("/");
       }
     } catch (err) {
-      // O erro já é tratado no contexto, mas podemos exibir uma mensagem genérica
-      setFeedback({ message: err.response?.data?.erro || "Erro de conexão. Tente novamente.", type: "error" });
+      addToast(err.response?.data?.erro || "Erro de conexão. Tente novamente.", "error");
     } finally {
       setLoading(false);
     }
@@ -51,21 +50,20 @@ function LoginRegisterPage() {
 
   const handleRegister = async () => {
     if (senha !== confirmarSenha) {
-      setFeedback({ message: "As senhas não coincidem.", type: "error" });
+      addToast("As senhas não coincidem.", "error");
       return;
     }
     setLoading(true);
-    clearFeedback();
     try {
       const response = await register({ nome, email, senha });
       if (response.sucesso) {
-        setIsLogin(true);
-        setFeedback({ message: "Cadastro realizado com sucesso! Faça o login para continuar.", type: "success" });
+        addToast("Cadastro realizado com sucesso! Faça o login para continuar.", "success");
+        toggleForm(); // Alterna para a tela de login
       } else {
-        setFeedback({ message: response.erro || "Erro ao registrar.", type: "error" });
+        addToast(response.erro || "Erro ao registrar.", "error");
       }
     } catch (err) {
-      setFeedback({ message: err.response?.data?.erro || "Erro de conexão. Tente novamente.", type: "error" });
+      addToast(err.response?.data?.erro || "Erro de conexão. Tente novamente.", "error");
     } finally {
       setLoading(false);
     }
@@ -84,7 +82,7 @@ function LoginRegisterPage() {
   return (
     <div className="auth-body">
       <div className={`form-container ${isLogin ? "login-active" : "register-active"}`}>
-        <div className="form-content">
+        <div className={`form-content ${animationClass}`}>
           <h2 className="form-title">{isLogin ? "Bem-vindo de Volta" : "Crie sua Conta"}</h2>
           <p className="form-subtitle">
             {isLogin
@@ -149,8 +147,6 @@ function LoginRegisterPage() {
             {isLogin && (
                 <a href="#" className="forgot-password">Esqueceu sua senha?</a>
             )}
-
-            <Alert message={feedback.message} type={feedback.type} />
 
             <button type="submit" className="submit-btn" disabled={loading}>
               {loading ? "CARREGANDO..." : (isLogin ? "ENTRAR" : "CADASTRAR")}

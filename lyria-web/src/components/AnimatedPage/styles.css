@@ -1,0 +1,14 @@
+@keyframes page-zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.page-animation-wrapper {
+  animation: page-zoom-in 0.5s ease-out forwards;
+}

@@ -24,6 +24,7 @@ import {
   postMessage,
   deleteConversation,
 } from "../../services/LyriaApi";
+import { useToast } from "../../context/ToastContext";
 
 import {
   SpeechConfig,
@@ -140,6 +141,7 @@ const PromptSuggestions = ({ onSuggestionClick }) => (
 
 function ChatContent() {
   const { user, isAuthenticated } = useAuth();
+  const { addToast } = useToast();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
@@ -154,6 +156,7 @@ function ChatContent() {
   const [isListening, setIsListening] = useState(false);
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
+  const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
 
   const fetchConversations = async () => {
     if (isAuthenticated && user) {
@@ -347,7 +350,7 @@ function ChatContent() {
         <header className="galaxy-chat-header">
           <button
             className="header-icon-btn"
-            onClick={() => setHistoryVisible(true)}
+            onClick={() => setHistoryVisible(!isHistoryVisible)}
             disabled={!isAuthenticated}
           >
             <FiClock />
@@ -443,7 +446,25 @@ function ChatContent() {
         </div>
 
         <footer className="galaxy-chat-input-container">
-          <FiPaperclip className="input-icon" />
+          <div className="attachment-container">
+            {isAttachmentMenuVisible && (
+              <div className="attachment-menu">
+                <button className="attachment-option" onClick={() => { addToast('Funcionalidade ainda não implementada.', 'info'); setAttachmentMenuVisible(false); }}>
+                  <span>Anexar Arquivo</span>
+                </button>
+                <button className="attachment-option" onClick={() => { addToast('Funcionalidade ainda não implementada.', 'info'); setAttachmentMenuVisible(false); }}>
+                  <span>Usar a Câmera</span>
+                </button>
+                <button className="attachment-option" onClick={() => { addToast('Funcionalidade ainda não implementada.', 'info'); setAttachmentMenuVisible(false); }}>
+                  <span>Enviar Foto/Vídeo da Galeria</span>
+                </button>
+              </div>
+            )}
+            <FiPaperclip
+              className="input-icon"
+              onClick={() => setAttachmentMenuVisible(!isAttachmentMenuVisible)}
+            />
+          </div>
           <textarea
             ref={textareaRef}
             value={input}

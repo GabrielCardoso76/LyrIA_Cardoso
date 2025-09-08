@@ -492,6 +492,46 @@
   margin-top: 1rem;
 }
 
+.attachment-container {
+  position: relative;
+}
+
+.attachment-menu {
+  position: absolute;
+  bottom: 150%; /* Position it above the input area */
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1a3d;
+  border-radius: 12px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+  width: 250px;
+}
+
+.attachment-option {
+  background: transparent;
+  border: none;
+  color: #f0f0f0;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.95rem;
+  transition: background 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.attachment-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 @keyframes pulse-mic {
   0% {
     transform: scale(1);
@@ -510,7 +550,7 @@
 /* --- Media Queries for Responsiveness --- */
 @media (max-width: 768px) {
   .galaxy-chat-area {
-    height: 100vh;
+    height: 100dvh; /* Usa a altura dinâmica da viewport para se ajustar ao teclado móvel */
     max-height: none;
     border-radius: 0;
     transform: translateX(0) !important; /* Impede o deslocamento quando o histórico está aberto */
