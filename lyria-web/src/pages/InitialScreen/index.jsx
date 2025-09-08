@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import './Styles/styles.css';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext'; // Importa o hook de autenticação
+import { useAuth } from '../../context/AuthContext';
+import { baseURL } from '../../services/api';
 import { FaTimes, FaWhatsapp } from "react-icons/fa";
 import logoImage from '/img/LogoBranca.png';
 
@@ -49,7 +50,15 @@ function InitialScreen() {
                 className="user-indicator"
                 onClick={() => setDropdownVisible(!dropdownVisible)}
               >
-                {user?.nome?.charAt(0).toUpperCase()}
+                {user?.foto_perfil_url ? (
+                  <img
+                    src={`${baseURL}${user.foto_perfil_url}`}
+                    alt="Foto de perfil"
+                    className="user-profile-pic"
+                  />
+                ) : (
+                  user?.nome?.charAt(0).toUpperCase()
+                )}
               </div>
               {dropdownVisible && (
                 <div className="user-dropdown-initial">
