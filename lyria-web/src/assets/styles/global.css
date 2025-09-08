@@ -30,5 +30,5 @@
 body {
   background-color: #000; /* Garante que não haja "flash branco" */
   overflow-x: hidden;
-  overflow-y: auto; /* Permite a rolagem vertical quando necessário */
+  overflow-y: hidden; /* A rolagem é controlada pelo .galaxy-layout-content */
 }

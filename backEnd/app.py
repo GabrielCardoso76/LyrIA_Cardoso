@@ -260,15 +260,11 @@ def update_profile(usuario_id):
             foto_perfil_url=foto_perfil_url
         )
         # Retorna os dados atualizados para o frontend poder atualizar o estado
-        usuario_atualizado = procurarUsuarioPorEmail(email) if email else None
-        if usuario_atualizado:
-             usuario_sem_senha = {key: value for key, value in usuario_atualizado.items() if key != 'senha_hash'}
-        else:
-            usuario_sem_senha = {}
+        usuario_atualizado = get_usuario_por_id(usuario_id)
 
         return jsonify({
             "sucesso": "Perfil atualizado com sucesso",
-            "usuario": usuario_sem_senha
+            "usuario": usuario_atualizado
         }), 200
     except Exception as e:
         if "UNIQUE constraint" in str(e):
