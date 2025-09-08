@@ -4,7 +4,6 @@
   align-items: flex-start;
   padding: 4rem 2rem;
   min-height: 100vh;
-  background-color: var(--color-dark-black);
   color: var(--color-off-white);
 }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { updateUserProfile } from '../../services/LyriaApi';
+import { baseURL } from '../../services/api';
 import './styles.css';
 
 const ProfileScreen = () => {
@@ -22,7 +23,7 @@ const ProfileScreen = () => {
     if (user) {
       setNome(user.nome);
       setEmail(user.email);
-      setPreviewImage(user.foto_perfil_url ? `http://127.0.0.1:5001${user.foto_perfil_url}` : null);
+      setPreviewImage(user.foto_perfil_url ? `${baseURL}${user.foto_perfil_url}` : null);
     }
   }, [user]);
 
