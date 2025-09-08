@@ -10,6 +10,30 @@ export const conversarAnonimo = async (pergunta) => {
   }
 };
 
+export const getUserProfile = async (userId) => {
+  try {
+    const response = await api.get(`/Lyria/profile/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar perfil do usuário:", error);
+    throw error;
+  }
+};
+
+export const updateUserProfile = async (userId, formData) => {
+  try {
+    const response = await api.put(`/Lyria/profile/${userId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao atualizar perfil do usuário:", error);
+    throw error;
+  }
+};
+
 export const deleteConversation = async (conversationId) => {
   try {
     const response = await api.delete(`/Lyria/conversas/${conversationId}`);

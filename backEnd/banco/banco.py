@@ -83,9 +83,15 @@ def criar_banco():
     
     # Adiciona a coluna 'titulo' se ela não existir na tabela 'conversas'
     cursor.execute("PRAGMA table_info(conversas)")
-    colunas = [info[1] for info in cursor.fetchall()]
-    if 'titulo' not in colunas:
+    colunas_conversas = [info[1] for info in cursor.fetchall()]
+    if 'titulo' not in colunas_conversas:
         cursor.execute("ALTER TABLE conversas ADD COLUMN titulo TEXT;")
+
+    # Adiciona a coluna 'foto_perfil_url' se ela não existir na tabela 'usuarios'
+    cursor.execute("PRAGMA table_info(usuarios)")
+    colunas_usuarios = [info[1] for info in cursor.fetchall()]
+    if 'foto_perfil_url' not in colunas_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil_url TEXT;")
 
     conn.commit()
     conn.close()
@@ -151,6 +157,52 @@ def procurarUsuarioPorEmail(usuarioEmail):
     result = cursor.fetchone()
     conn.close()
     return dict(result) if result else None
+
+def get_usuario_por_id(usuario_id):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome, email, foto_perfil_url, persona_escolhida FROM usuarios WHERE id = ?", (usuario_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return dict(result) if result else None
+
+def atualizar_perfil_usuario(usuario_id, nome=None, email=None, senha_hash=None, foto_perfil_url=None):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    cursor = conn.cursor()
+
+    fields_to_update = []
+    params = []
+
+    if nome:
+        fields_to_update.append("nome = ?")
+        params.append(nome)
+    if email:
+        fields_to_update.append("email = ?")
+        params.append(email)
+    if senha_hash:
+        fields_to_update.append("senha_hash = ?")
+        params.append(senha_hash)
+    if foto_perfil_url:
+        fields_to_update.append("foto_perfil_url = ?")
+        params.append(foto_perfil_url)
+
+    if not fields_to_update:
+        return  # No fields to update
+
+    params.append(usuario_id)
+
+    query = f"UPDATE usuarios SET {', '.join(fields_to_update)} WHERE id = ?"
+
+    try:
+        cursor.execute(query, tuple(params))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def pegarHistorico(usuario, limite=3):
     conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)

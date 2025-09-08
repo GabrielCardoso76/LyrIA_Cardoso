@@ -40,12 +40,19 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('lyriaUser');
   };
 
+  const updateUser = (updatedUserData) => {
+    const newUser = { ...user, ...updatedUserData };
+    setUser(newUser);
+    localStorage.setItem('lyriaUser', JSON.stringify(newUser));
+  };
+
   const value = {
     user,
     isAuthenticated,
     loading,
     login,
     logout,
+    updateUser,
   };
 
   // Não renderiza a aplicação até que a verificação inicial do localStorage seja concluída

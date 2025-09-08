@@ -1,13 +1,17 @@
 import sqlite3
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
+from werkzeug.utils import secure_filename
 from testeDaIa import perguntar_ollama, buscar_na_web, get_persona_texto
 from banco.banco import (
-    pegarPersonaEscolhida, 
-    escolherApersona, 
-    criarUsuario, 
-    procurarUsuarioPorEmail, 
+    pegarPersonaEscolhida,
+    escolherApersona,
+    criarUsuario,
+    procurarUsuarioPorEmail,
+    get_usuario_por_id,
+    atualizar_perfil_usuario,
     pegarHistorico,
     criar_banco,
     salvarMensagem,
@@ -22,6 +26,17 @@ from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
 from waitress import serve
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'uploads/profile_pics')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16MB limit
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 CORS(app)
 bcrypt = Bcrypt(app)
 
@@ -212,6 +227,68 @@ def login():
             return jsonify({"erro": "Email ou senha inválidos"}), 401
     except Exception as e:
         return jsonify({"erro": f"Erro ao fazer login: {str(e)}"}), 500
+
+@app.route('/Lyria/profile/<int:usuario_id>', methods=['PUT'])
+def update_profile(usuario_id):
+    # NOTE: In a real app, you'd verify that the logged-in user
+    # is authorized to edit this profile, e.g., using session or JWT.
+
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+    senha = request.form.get('senha')
+
+    foto_perfil_url = None
+    senha_hash = None
+
+    if 'foto_perfil' in request.files:
+        file = request.files['foto_perfil']
+        if file and file.filename != '' and allowed_file(file.filename):
+            filename = secure_filename(f"{usuario_id}_{file.filename}")
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            foto_perfil_url = f'/uploads/profile_pics/{filename}'
+
+    if senha:
+        senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
+
+    try:
+        atualizar_perfil_usuario(
+            usuario_id=usuario_id,
+            nome=nome,
+            email=email,
+            senha_hash=senha_hash,
+            foto_perfil_url=foto_perfil_url
+        )
+        # Retorna os dados atualizados para o frontend poder atualizar o estado
+        usuario_atualizado = procurarUsuarioPorEmail(email) if email else None
+        if usuario_atualizado:
+             usuario_sem_senha = {key: value for key, value in usuario_atualizado.items() if key != 'senha_hash'}
+        else:
+            usuario_sem_senha = {}
+
+        return jsonify({
+            "sucesso": "Perfil atualizado com sucesso",
+            "usuario": usuario_sem_senha
+        }), 200
+    except Exception as e:
+        if "UNIQUE constraint" in str(e):
+            return jsonify({"erro": "O e-mail fornecido já está em uso."}), 409
+        return jsonify({"erro": f"Erro ao atualizar perfil: {str(e)}"}), 500
+
+@app.route('/Lyria/profile/<int:usuario_id>', methods=['GET'])
+def get_profile(usuario_id):
+    try:
+        usuario = get_usuario_por_id(usuario_id)
+        if usuario:
+            return jsonify({"usuario": usuario}), 200
+        else:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao buscar perfil: {str(e)}"}), 500
+
+@app.route('/uploads/profile_pics/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/Lyria/<usuario>/historico', methods=['GET'])
 def get_historico_recente(usuario):

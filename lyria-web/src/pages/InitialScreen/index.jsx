@@ -53,6 +53,7 @@ function InitialScreen() {
               </div>
               {dropdownVisible && (
                 <div className="user-dropdown-initial">
+                  <Link to="/profile" className="dropdown-link">Ver Perfil</Link>
                   <button onClick={handleLogout}>Sair</button>
                 </div>
               )}
