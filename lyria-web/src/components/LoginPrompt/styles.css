@@ -69,6 +69,25 @@
   background-color: var(--color-purple-hover);
 }
 
+.guest-btn {
+  background-color: transparent;
+  color: var(--color-light-purple);
+  padding: 12px 24px;
+  border: 1px solid var(--color-light-purple);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.guest-btn:hover {
+  background-color: var(--color-light-purple);
+  color: var(--color-dark-purple-v2);
+}
+
 .dismiss-btn {
   background: none;
   border: none;

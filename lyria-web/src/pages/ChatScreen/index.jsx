@@ -17,6 +17,7 @@ import { RiRobot2Line } from "react-icons/ri";
 import { Link } from "react-router-dom";
 import AnimatedBotMessage from "../../components/AnimatedBotMessage";
 import LoginPrompt from "../../components/LoginPrompt";
+import ConfirmationModal from "../../components/ConfirmationModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   conversarAnonimo,
@@ -161,6 +162,8 @@ function ChatContent() {
   const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
   const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
   const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
 
   const fetchConversations = async () => {
     if (isAuthenticated && user) {
@@ -342,16 +345,27 @@ function ChatContent() {
     }
   };
 
-  const deleteChat = async (idToDelete) => {
+  const deleteChat = (id) => {
+    setChatToDelete(id);
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!chatToDelete) return;
     try {
-      await deleteConversation(idToDelete);
+      await deleteConversation(chatToDelete);
+      addToast("Conversa deletada com sucesso.", "success");
       fetchConversations(); // Atualiza a lista
-      if (currentChatId === idToDelete) {
+      if (currentChatId === chatToDelete) {
         setCurrentChatId(null);
         setMessages([]);
       }
     } catch (error) {
+      addToast("Erro ao deletar conversa.", "error");
       console.error("Erro ao deletar conversa", error);
+    } finally {
+      setDeleteModalVisible(false);
+      setChatToDelete(null);
     }
   };
 
@@ -395,8 +409,18 @@ function ChatContent() {
   return (
     <>
       {isLoginPromptVisible && (
-        <LoginPrompt onDismiss={() => setLoginPromptVisible(false)} />
+        <LoginPrompt
+          onDismiss={() => setLoginPromptVisible(false)}
+          showContinueAsGuest={false}
+        />
       )}
+      <ConfirmationModal
+        isOpen={isDeleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={handleConfirmDelete}
+        title="Confirmar Exclusão"
+        message="Você tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita."
+      />
       <HistoryPanel
         isVisible={isHistoryVisible}
         onClose={() => setHistoryVisible(false)}

@@ -12,16 +12,33 @@ function InitialScreen() {
   const [isInfoVisible, setInfoVisible] = useState(false);
   const [isContactModalVisible, setContactModalVisible] = useState(false);
   const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
+  const [isModalClosing, setIsModalClosing] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
   const toggleInfoModal = () => {
-    setInfoVisible(!isInfoVisible);
+    if (isInfoVisible) {
+      setIsModalClosing(true);
+      setTimeout(() => {
+        setInfoVisible(false);
+        setIsModalClosing(false);
+      }, 500); // Corresponde à duração da animação de saída
+    } else {
+      setInfoVisible(true);
+    }
   };
 
   const toggleContactModal = () => {
-    setContactModalVisible(!isContactModalVisible);
+    if (isContactModalVisible) {
+      setIsModalClosing(true);
+      setTimeout(() => {
+        setContactModalVisible(false);
+        setIsModalClosing(false);
+      }, 500);
+    } else {
+      setContactModalVisible(true);
+    }
   };
 
   const handleLogout = () => {
@@ -37,10 +54,18 @@ function InitialScreen() {
     }
   };
 
+  const handleContinueAsGuest = () => {
+    navigate('/chat');
+  };
+
   return (
     <div className="App">
       {isLoginPromptVisible && (
-        <LoginPrompt onDismiss={() => setLoginPromptVisible(false)} />
+        <LoginPrompt
+          onDismiss={() => setLoginPromptVisible(false)}
+          onContinueAsGuest={handleContinueAsGuest}
+          showContinueAsGuest={true}
+        />
       )}
       <header className="app-header">
         <Link to={'/'} className="logo-link">
@@ -95,8 +120,8 @@ function InitialScreen() {
       </div>
 
       {isInfoVisible && (
-        <div className="info-modal-backdrop">
-          <div className="info-modal-content">
+        <div className={`info-modal-backdrop ${isModalClosing ? 'fade-out' : ''}`}>
+          <div className={`info-modal-content ${isModalClosing ? 'slide-out' : ''}`}>
             <button className="close-modal-btn" onClick={toggleInfoModal}>
               <FaTimes />
             </button>
@@ -119,8 +144,8 @@ function InitialScreen() {
       )}
 
       {isContactModalVisible && (
-        <div className="info-modal-backdrop">
-          <div className="info-modal-content">
+        <div className={`info-modal-backdrop ${isModalClosing ? 'fade-out' : ''}`}>
+          <div className={`info-modal-content ${isModalClosing ? 'slide-out' : ''}`}>
             <button className="close-modal-btn" onClick={toggleContactModal}>
               <FaTimes />
             </button>
