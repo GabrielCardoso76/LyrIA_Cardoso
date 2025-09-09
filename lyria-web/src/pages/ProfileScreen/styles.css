@@ -147,3 +147,32 @@
 .btn-secondary:hover {
     background: #5a5a5a;
 }
+
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  color: var(--color-light-purple);
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.back-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-off-white);
+}
+
+/* Adjust the main container to account for the absolute positioned button */
+.profile-container {
+  position: relative;
+  padding-top: 4rem; /* Add more padding to the top */
+}
