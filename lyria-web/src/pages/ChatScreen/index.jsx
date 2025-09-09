@@ -380,7 +380,7 @@ function ChatContent() {
     if (!isAuthenticated) {
       setLoginPromptVisible(true);
     } else {
-      setHistoryVisible(true);
+      setHistoryVisible((prev) => !prev);
     }
   };
 
