@@ -1,15 +1,38 @@
 import { useState } from 'react';
 import './Styles/styles.css';
-import { Link } from 'react-router-dom';
-// import Galaxy from '../../components/Galaxy/Galaxy.jsx'; // <--- REMOVIDO
-import { FaTimes } from "react-icons/fa";
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { baseURL } from '../../services/api';
+import { FaTimes, FaWhatsapp } from "react-icons/fa";
 import logoImage from '/img/LogoBranca.png';
 
 function InitialScreen() {
   const [isInfoVisible, setInfoVisible] = useState(false);
+  const [isContactModalVisible, setContactModalVisible] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  const teamMembers = [
+    { name: "👨‍💻 Antony", number: null },
+    { name: "👨‍💻 Gabriel Cardoso", number: "16993463038" },
+    { name: "👨‍💻 João Gabriel", number: null },
+    { name: "👩‍💻 Juliana", number: null },
+    { name: "👩‍💻 Raissa", number: null },
+    { name: "👩‍💻 Vitoria", number: null },
+  ];
 
   const toggleInfoModal = () => {
     setInfoVisible(!isInfoVisible);
+  };
+
+  const toggleContactModal = () => {
+    setContactModalVisible(!isContactModalVisible);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setDropdownVisible(false);
   };
 
   return (
@@ -21,12 +44,35 @@ function InitialScreen() {
           </div>
         </Link>
         <nav>
-          <Link to={'/RegistrationAndLogin'}>Entrar</Link>
-          <a href="#">Contato</a>
+          {isAuthenticated ? (
+            <div className="user-profile-section">
+              <div
+                className="user-indicator"
+                onClick={() => setDropdownVisible(!dropdownVisible)}
+              >
+                {user?.foto_perfil_url ? (
+                  <img
+                    src={`${baseURL}${user.foto_perfil_url}`}
+                    alt="Foto de perfil"
+                    className="user-profile-pic"
+                  />
+                ) : (
+                  user?.nome?.charAt(0).toUpperCase()
+                )}
+              </div>
+              {dropdownVisible && (
+                <div className="user-dropdown-initial">
+                  <Link to="/profile" className="dropdown-link">Ver Perfil</Link>
+                  <button onClick={handleLogout}>Sair</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to={'/RegistrationAndLogin'}>Entrar</Link>
+          )}
+          <button onClick={toggleContactModal} className="nav-button">Contato</button>
         </nav>
       </header>
-
-      {/* O <Galaxy /> foi removido daqui porque o GalaxyLayout já o fornece */}
 
       <div className="main-content">
         <div id="frase_efeito">
@@ -34,7 +80,7 @@ function InitialScreen() {
         </div>
         <span id="espaço"></span>
         <div className="container_espaço">
-          <Link className="linkSemEstilo" to={'/loading'}>
+          <Link className="linkSemEstilo" to={'/chat'}>
             <button id="comecar">
               Começar
             </button>
@@ -64,6 +110,36 @@ function InitialScreen() {
               <li>Assistência criativa para seus projetos.</li>
               <li>Interface amigável e personalizável.</li>
               <li>Integração com diversas ferramentas.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {isContactModalVisible && (
+        <div className="info-modal-backdrop">
+          <div className="info-modal-content">
+            <button className="close-modal-btn" onClick={toggleContactModal}>
+              <FaTimes />
+            </button>
+            <h2>Nossa Equipe</h2>
+            <ul className="team-list">
+              {teamMembers.map((member, index) => (
+                <li key={index} className="team-member">
+                  <span>{member.name}</span>
+                  {member.number ? (
+                    <a
+                      href={`https://wa.me/55${member.number}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="whatsapp-link"
+                    >
+                      <FaWhatsapp />
+                    </a>
+                  ) : (
+                    <span className="no-number"></span>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
