@@ -11,7 +11,7 @@ const LoginPrompt = ({ onDismiss, onContinueAsGuest, showContinueAsGuest }) => {
   };
 
   // Se onContinueAsGuest não for fornecido, ele simplesmente dispensa o modal.
-  const handleGuestContinue = onContinueAs_guest || onDismiss;
+  const handleGuestContinue = onContinueAsGuest || onDismiss;
 
   return (
     <div className="login-prompt-overlay">
