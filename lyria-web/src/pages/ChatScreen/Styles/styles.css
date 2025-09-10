@@ -35,20 +35,7 @@
 }
 
 .galaxy-chat-area.history-open {
-  /* This transform was pushing the content. It's removed. */
-}
-
-/* Adiciona um overlay escuro quando o histórico está aberto, agora para todas as telas */
-.galaxy-chat-area.history-open::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 99;
-  transition: background-color 0.4s ease-in-out;
+  transform: translateX(300px);
 }
 
 .galaxy-chat-header {
@@ -585,7 +572,7 @@
     height: 100dvh; /* Usa a altura dinâmica da viewport para se ajustar ao teclado móvel */
     max-height: none;
     border-radius: 0;
-    /* The transform is no longer needed here */
+    transform: translateX(0) !important; /* Impede o deslocamento quando o histórico está aberto */
   }
 
   .history-panel {
@@ -593,7 +580,17 @@
     max-width: 320px;
   }
 
-  /* The overlay is now handled globally */
+  /* Adiciona um overlay escuro quando o histórico está aberto */
+  .galaxy-chat-area.history-open::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+  }
 
   .galaxy-chat-header {
     padding: 0.8rem 1rem;
@@ -641,11 +638,4 @@
     right: auto;
     bottom: auto;
   }
-}
-
-.generated-image {
-  max-width: 100%;
-  border-radius: 15px;
-  margin-top: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }

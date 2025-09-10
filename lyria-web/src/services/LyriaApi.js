@@ -10,18 +10,6 @@ export const conversarAnonimo = async (pergunta) => {
   }
 };
 
-export const generateImage = async (prompt) => {
-  try {
-    const response = await api.post('/Lyria/generate-image', { prompt }, {
-      responseType: 'blob', // Important to handle the binary image data
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao gerar imagem:", error);
-    throw error;
-  }
-};
-
 export const getUserProfile = async (userId) => {
   try {
     const response = await api.get(`/Lyria/profile/${userId}`);
