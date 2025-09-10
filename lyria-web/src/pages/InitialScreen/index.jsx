@@ -2,43 +2,32 @@ import { useState } from 'react';
 import './Styles/styles.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import LoginPrompt from '../../components/LoginPrompt';
 import { baseURL } from '../../services/api';
-import { FaTimes } from "react-icons/fa";
-import { FiMail, FiGithub } from "react-icons/fi";
+import { FaTimes, FaWhatsapp } from "react-icons/fa";
 import logoImage from '/img/LogoBranca.png';
 
 function InitialScreen() {
   const [isInfoVisible, setInfoVisible] = useState(false);
   const [isContactModalVisible, setContactModalVisible] = useState(false);
-  const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
-  const [isModalClosing, setIsModalClosing] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
+  const teamMembers = [
+    { name: "👨‍💻 Antony", number: null },
+    { name: "👨‍💻 Gabriel Cardoso", number: "16993463038" },
+    { name: "👨‍💻 João Gabriel", number: null },
+    { name: "👩‍💻 Juliana", number: null },
+    { name: "👩‍💻 Raissa", number: null },
+    { name: "👩‍💻 Vitoria", number: null },
+  ];
+
   const toggleInfoModal = () => {
-    if (isInfoVisible) {
-      setIsModalClosing(true);
-      setTimeout(() => {
-        setInfoVisible(false);
-        setIsModalClosing(false);
-      }, 500); // Corresponde à duração da animação de saída
-    } else {
-      setInfoVisible(true);
-    }
+    setInfoVisible(!isInfoVisible);
   };
 
   const toggleContactModal = () => {
-    if (isContactModalVisible) {
-      setIsModalClosing(true);
-      setTimeout(() => {
-        setContactModalVisible(false);
-        setIsModalClosing(false);
-      }, 500);
-    } else {
-      setContactModalVisible(true);
-    }
+    setContactModalVisible(!isContactModalVisible);
   };
 
   const handleLogout = () => {
@@ -46,27 +35,8 @@ function InitialScreen() {
     setDropdownVisible(false);
   };
 
-  const handleStartClick = () => {
-    if (isAuthenticated) {
-      navigate('/chat');
-    } else {
-      setLoginPromptVisible(true);
-    }
-  };
-
-  const handleContinueAsGuest = () => {
-    navigate('/chat');
-  };
-
   return (
     <div className="App">
-      {isLoginPromptVisible && (
-        <LoginPrompt
-          onDismiss={() => setLoginPromptVisible(false)}
-          onContinueAsGuest={handleContinueAsGuest}
-          showContinueAsGuest={true}
-        />
-      )}
       <header className="app-header">
         <Link to={'/'} className="logo-link">
           <div className="logo">
@@ -110,9 +80,11 @@ function InitialScreen() {
         </div>
         <span id="espaço"></span>
         <div className="container_espaço">
-          <button id="comecar" onClick={handleStartClick}>
-            Começar
-          </button>
+          <Link className="linkSemEstilo" to={'/chat'}>
+            <button id="comecar">
+              Começar
+            </button>
+          </Link>
           <button id="sobre" onClick={toggleInfoModal}>
             Saiba Mais
           </button>
@@ -120,8 +92,8 @@ function InitialScreen() {
       </div>
 
       {isInfoVisible && (
-        <div className={`info-modal-backdrop ${isModalClosing ? 'fade-out' : ''}`}>
-          <div className={`info-modal-content ${isModalClosing ? 'slide-out' : ''}`}>
+        <div className="info-modal-backdrop">
+          <div className="info-modal-content">
             <button className="close-modal-btn" onClick={toggleInfoModal}>
               <FaTimes />
             </button>
@@ -144,27 +116,31 @@ function InitialScreen() {
       )}
 
       {isContactModalVisible && (
-        <div className={`info-modal-backdrop ${isModalClosing ? 'fade-out' : ''}`}>
-          <div className={`info-modal-content ${isModalClosing ? 'slide-out' : ''}`}>
+        <div className="info-modal-backdrop">
+          <div className="info-modal-content">
             <button className="close-modal-btn" onClick={toggleContactModal}>
               <FaTimes />
             </button>
-            <h2>Contato</h2>
-            <div className="contact-info">
-              <p>
-                Para dúvidas, sugestões ou suporte, entre em contato conosco através dos seguintes canais:
-              </p>
-              <div className="contact-links">
-                <a href="mailto:contato@lyria.ai" className="contact-link-item">
-                  <FiMail />
-                  <span>contato@lyria.ai</span>
-                </a>
-                <a href="https://github.com/LyrIA-Project" target="_blank" rel="noopener noreferrer" className="contact-link-item">
-                  <FiGithub />
-                  <span>LyrIA-Project</span>
-                </a>
-              </div>
-            </div>
+            <h2>Nossa Equipe</h2>
+            <ul className="team-list">
+              {teamMembers.map((member, index) => (
+                <li key={index} className="team-member">
+                  <span>{member.name}</span>
+                  {member.number ? (
+                    <a
+                      href={`https://wa.me/55${member.number}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="whatsapp-link"
+                    >
+                      <FaWhatsapp />
+                    </a>
+                  ) : (
+                    <span className="no-number"></span>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

@@ -16,8 +16,6 @@ import { FaVolumeUp, FaVolumeMute } from "react-icons/fa";
 import { RiRobot2Line } from "react-icons/ri";
 import { Link } from "react-router-dom";
 import AnimatedBotMessage from "../../components/AnimatedBotMessage";
-import LoginPrompt from "../../components/LoginPrompt";
-import ConfirmationModal from "../../components/ConfirmationModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   conversarAnonimo,
@@ -25,6 +23,7 @@ import {
   getMessagesForConversation,
   postMessage,
   deleteConversation,
+  generateImage,
 } from "../../services/LyriaApi";
 import { useToast } from "../../context/ToastContext";
 
@@ -151,7 +150,6 @@ function ChatContent() {
   const [isHistoryVisible, setHistoryVisible] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
-  const requestCancellationRef = useRef({ cancel: () => {} });
 
   const [conversations, setConversations] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
@@ -161,9 +159,6 @@ function ChatContent() {
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
   const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
   const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
-  const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
-  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [chatToDelete, setChatToDelete] = useState(null);
 
   const fetchConversations = async () => {
     if (isAuthenticated && user) {
@@ -222,15 +217,57 @@ function ChatContent() {
     );
   };
 
+  const handleImageGeneration = async (command) => {
+    const prompt = command.replace('/desenhe', '').trim();
+    if (!prompt) {
+      addToast("Por favor, forneça um texto para gerar a imagem.", "warning");
+      return;
+    }
+
+    const userMessage = {
+      id: crypto.randomUUID(),
+      sender: 'user',
+      text: command,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsBotTyping(true);
+
+    try {
+      const response = await generateImage(prompt);
+      const imageUrl = URL.createObjectURL(response);
+
+      const botMessage = {
+        id: crypto.randomUUID(),
+        sender: 'bot',
+        type: 'image', // Add a type for the message
+        url: imageUrl,
+        text: `Imagem gerada para: "${prompt}"`, // Fallback text
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Erro ao gerar imagem:", error);
+      addToast("Desculpe, não foi possível gerar a imagem.", "error");
+      const errorMessage = {
+        id: crypto.randomUUID(),
+        sender: "bot",
+        text: "Desculpe, ocorreu um erro ao gerar a imagem.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsBotTyping(false);
+    }
+  };
+
   const handleSend = async (textToSend) => {
     const trimmedInput = (
       typeof textToSend === "string" ? textToSend : input
     ).trim();
     if (!trimmedInput || isBotTyping || isListening) return;
 
-    // Cancel any ongoing request before sending a new one
-    if (requestCancellationRef.current) {
-      requestCancellationRef.current.cancel();
+    if (trimmedInput.startsWith('/desenhe')) {
+      handleImageGeneration(trimmedInput);
+      return;
     }
 
     const userMessage = {
@@ -242,61 +279,41 @@ function ChatContent() {
     setInput("");
     setIsBotTyping(true);
 
-    // This ID is captured at the moment of sending the request
-    const sentFromChatId = currentChatId;
-
     try {
       let response;
-      const controller = new AbortController();
-      requestCancellationRef.current = { cancel: () => controller.abort() };
-
       if (isAuthenticated && user) {
-        response = await postMessage(user.nome, sentFromChatId, trimmedInput, controller.signal);
+        // Usa o ID da conversa atual. Se for nulo, o backend criará uma nova.
+        const chatIdToUse = currentChatId;
+        response = await postMessage(user.nome, chatIdToUse, trimmedInput);
 
-        // Check if the chat context has changed since the request was sent
-        if (currentChatId !== sentFromChatId) {
-          console.log("Request was for a different chat. Ignoring response.");
-          return; // Ignore the response
-        }
-
-        if (response.new_conversa_id && !sentFromChatId) {
+        // Se uma nova conversa foi criada, o backend retorna um novo ID.
+        // Atualizamos nosso estado para que a *próxima* mensagem use esse novo ID.
+        if (response.new_conversa_id && !chatIdToUse) {
           setCurrentChatId(response.new_conversa_id);
           fetchConversations();
         }
       } else {
-        response = await conversarAnonimo(trimmedInput, controller.signal);
-      }
-
-      if (controller.signal.aborted) {
-        console.log("Request aborted, not setting bot message.");
-        return;
+        response = await conversarAnonimo(trimmedInput);
       }
 
       const botMessage = {
         id: crypto.randomUUID(),
         sender: "bot",
         text: response.resposta,
-        animate: true,
+        animate: true, // Animar apenas novas mensagens do bot
       };
       setMessages((prev) => [...prev, botMessage]);
       speakResponse(response.resposta);
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Fetch aborted');
-      } else {
-        const errorMessage = {
-          id: crypto.randomUUID(),
-          sender: "bot",
-          text: "Desculpe, ocorreu um erro.",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-        speakResponse(errorMessage.text);
-      }
+      const errorMessage = {
+        id: crypto.randomUUID(),
+        sender: "bot",
+        text: "Desculpe, ocorreu um erro ao se comunicar com o servidor.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      speakResponse(errorMessage.text);
     } finally {
-      // Only stop typing indicator if the chat context hasn't changed
-      if (currentChatId === sentFromChatId) {
-        setIsBotTyping(false);
-      }
+      setIsBotTyping(false);
     }
   };
 
@@ -313,10 +330,6 @@ function ChatContent() {
 
   // Limpa a tela para uma nova conversa
   const startNewChat = () => {
-    if (requestCancellationRef.current) {
-      requestCancellationRef.current.cancel();
-    }
-    setIsBotTyping(false);
     setChatBodyAnimationClass("fade-out");
     setTimeout(() => {
       setCurrentChatId(null);
@@ -326,10 +339,6 @@ function ChatContent() {
   };
 
   const loadChat = async (id) => {
-    if (requestCancellationRef.current) {
-      requestCancellationRef.current.cancel();
-    }
-    setIsBotTyping(false);
     try {
       const response = await getMessagesForConversation(id);
       setCurrentChatId(id);
@@ -345,27 +354,16 @@ function ChatContent() {
     }
   };
 
-  const deleteChat = (id) => {
-    setChatToDelete(id);
-    setDeleteModalVisible(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!chatToDelete) return;
+  const deleteChat = async (idToDelete) => {
     try {
-      await deleteConversation(chatToDelete);
-      addToast("Conversa deletada com sucesso.", "success");
+      await deleteConversation(idToDelete);
       fetchConversations(); // Atualiza a lista
-      if (currentChatId === chatToDelete) {
+      if (currentChatId === idToDelete) {
         setCurrentChatId(null);
         setMessages([]);
       }
     } catch (error) {
-      addToast("Erro ao deletar conversa.", "error");
       console.error("Erro ao deletar conversa", error);
-    } finally {
-      setDeleteModalVisible(false);
-      setChatToDelete(null);
     }
   };
 
@@ -390,37 +388,8 @@ function ChatContent() {
       .trim();
   };
 
-  const handleHistoryClick = () => {
-    if (!isAuthenticated) {
-      setLoginPromptVisible(true);
-    } else {
-      setHistoryVisible((prev) => !prev);
-    }
-  };
-
-  const handleNewChatClick = () => {
-    if (!isAuthenticated) {
-      setLoginPromptVisible(true);
-    } else {
-      startNewChat();
-    }
-  };
-
   return (
     <>
-      {isLoginPromptVisible && (
-        <LoginPrompt
-          onDismiss={() => setLoginPromptVisible(false)}
-          showContinueAsGuest={false}
-        />
-      )}
-      <ConfirmationModal
-        isOpen={isDeleteModalVisible}
-        onClose={() => setDeleteModalVisible(false)}
-        onConfirm={handleConfirmDelete}
-        title="Confirmar Exclusão"
-        message="Você tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita."
-      />
       <HistoryPanel
         isVisible={isHistoryVisible}
         onClose={() => setHistoryVisible(false)}
@@ -434,7 +403,8 @@ function ChatContent() {
         <header className="galaxy-chat-header">
           <button
             className="header-icon-btn"
-            onClick={handleHistoryClick}
+            onClick={() => setHistoryVisible(!isHistoryVisible)}
+            disabled={!isAuthenticated}
           >
             <FiClock />
           </button>
@@ -463,8 +433,9 @@ function ChatContent() {
             </button>
             <button
               className="header-icon-btn"
-              onClick={handleNewChatClick}
+              onClick={() => startNewChat()}
               title="Novo Chat"
+              disabled={!isAuthenticated}
             >
               <FiPlus />
             </button>
@@ -487,11 +458,15 @@ function ChatContent() {
                   <span className="sender-name">
                     {msg.sender === "bot" ? "LyrIA" : "Você"}
                   </span>
-                  <AnimatedBotMessage
-                    fullText={msg.text}
-                    animate={msg.animate}
-                  />
-                  {msg.sender === "bot" && (
+                  {msg.type === 'image' ? (
+                    <img src={msg.url} alt={msg.text} className="generated-image" />
+                  ) : (
+                    <AnimatedBotMessage
+                      fullText={msg.text}
+                      animate={msg.animate}
+                    />
+                  )}
+                  {msg.sender === "bot" && msg.type !== 'image' && (
                     <button
                       className="copy-btn"
                       onClick={() =>

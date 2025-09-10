@@ -1,6 +1,9 @@
 import sqlite3
 import os
-from flask import Flask, request, jsonify, send_from_directory
+import requests
+from io import BytesIO
+from dotenv import load_dotenv
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from werkzeug.utils import secure_filename
@@ -406,6 +409,36 @@ def listar_personas():
     }
 
     return jsonify({"personas": personas})
+
+load_dotenv()
+
+@app.route('/Lyria/generate-image', methods=['POST'])
+def generate_image():
+    data = request.get_json()
+    if not data or 'prompt' not in data:
+        return jsonify({"erro": "Campo 'prompt' é obrigatório"}), 400
+
+    prompt = data['prompt']
+    api_key = os.getenv('CLIPDROP_API_KEY')
+
+    if not api_key:
+        return jsonify({"erro": "Chave de API do Clipdrop não configurada no servidor."}), 500
+
+    r = requests.post('https://clipdrop-api.co/text-to-image/v1',
+        files = {
+            'prompt': (None, prompt, 'text/plain')
+        },
+        headers = { 'x-api-key': api_key}
+    )
+
+    if r.ok:
+        return send_file(BytesIO(r.content), mimetype='image/png')
+    else:
+        try:
+            error_data = r.json()
+            return jsonify({"erro": "Falha ao gerar imagem", "detalhes": error_data}), r.status_code
+        except Exception:
+            return jsonify({"erro": "Falha ao gerar imagem", "detalhes": r.text}), r.status_code
 
 if __name__ == '__main__':
     print("Passo 1: Iniciando a criação do banco de dados...")

@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { updateUserProfile } from '../../services/LyriaApi';
 import { baseURL } from '../../services/api';
-import { FiUser, FiArrowLeft } from 'react-icons/fi';
+import { FiUser } from 'react-icons/fi';
 import './styles.css';
 
 const ProfileScreen = () => {
   const { user, updateUser } = useAuth();
-  const navigate = useNavigate();
   const { addToast } = useToast();
 
   const [nome, setNome] = useState('');
@@ -106,9 +104,6 @@ const ProfileScreen = () => {
   return (
     <div className="profile-screen">
       <div className="profile-container">
-        <button onClick={() => navigate(-1)} className="back-button">
-          <FiArrowLeft />
-        </button>
         <h2>Seu Perfil</h2>
 
         <form onSubmit={handleUpdateProfile} className="profile-form">
