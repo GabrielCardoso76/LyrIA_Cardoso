@@ -1,11 +1,13 @@
 import api from "./api";
 
-export const conversarAnonimo = async (pergunta) => {
+export const conversarAnonimo = async (pergunta, signal) => {
   try {
-    const response = await api.post("/Lyria/conversar", { pergunta });
+    const response = await api.post("/Lyria/conversar", { pergunta }, { signal });
     return response.data;
   } catch (error) {
-    console.error("Erro ao conversar com a Lyria (anônimo):", error);
+    if (error.name !== 'AbortError') {
+      console.error("Erro ao conversar com a Lyria (anônimo):", error);
+    }
     throw error;
   }
 };
@@ -64,15 +66,17 @@ export const getMessagesForConversation = async (conversationId) => {
   }
 };
 
-export const postMessage = async (username, conversationId, question) => {
+export const postMessage = async (username, conversationId, question, signal) => {
   try {
     const response = await api.post(`/Lyria/${username}/conversar`, {
       pergunta: question,
       conversa_id: conversationId,
-    });
+    }, { signal });
     return response.data;
   } catch (error) {
-    console.error("Erro ao enviar mensagem:", error);
+    if (error.name !== 'AbortError') {
+      console.error("Erro ao enviar mensagem:", error);
+    }
     throw error;
   }
 };

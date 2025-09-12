@@ -16,6 +16,8 @@ import { FaVolumeUp, FaVolumeMute } from "react-icons/fa";
 import { RiRobot2Line } from "react-icons/ri";
 import { Link } from "react-router-dom";
 import AnimatedBotMessage from "../../components/AnimatedBotMessage";
+import LoginPrompt from "../../components/LoginPrompt";
+import ConfirmationModal from "../../components/ConfirmationModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   conversarAnonimo,
@@ -149,6 +151,7 @@ function ChatContent() {
   const [isHistoryVisible, setHistoryVisible] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const requestCancellationRef = useRef({ cancel: () => {} });
 
   const [conversations, setConversations] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
@@ -158,6 +161,9 @@ function ChatContent() {
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
   const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
   const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
+  const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
 
   const fetchConversations = async () => {
     if (isAuthenticated && user) {
@@ -222,6 +228,11 @@ function ChatContent() {
     ).trim();
     if (!trimmedInput || isBotTyping || isListening) return;
 
+    // Cancel any ongoing request before sending a new one
+    if (requestCancellationRef.current) {
+      requestCancellationRef.current.cancel();
+    }
+
     const userMessage = {
       id: crypto.randomUUID(),
       sender: "user",
@@ -231,41 +242,61 @@ function ChatContent() {
     setInput("");
     setIsBotTyping(true);
 
+    // This ID is captured at the moment of sending the request
+    const sentFromChatId = currentChatId;
+
     try {
       let response;
-      if (isAuthenticated && user) {
-        // Usa o ID da conversa atual. Se for nulo, o backend criará uma nova.
-        const chatIdToUse = currentChatId;
-        response = await postMessage(user.nome, chatIdToUse, trimmedInput);
+      const controller = new AbortController();
+      requestCancellationRef.current = { cancel: () => controller.abort() };
 
-        // Se uma nova conversa foi criada, o backend retorna um novo ID.
-        // Atualizamos nosso estado para que a *próxima* mensagem use esse novo ID.
-        if (response.new_conversa_id && !chatIdToUse) {
+      if (isAuthenticated && user) {
+        response = await postMessage(user.nome, sentFromChatId, trimmedInput, controller.signal);
+
+        // Check if the chat context has changed since the request was sent
+        if (currentChatId !== sentFromChatId) {
+          console.log("Request was for a different chat. Ignoring response.");
+          return; // Ignore the response
+        }
+
+        if (response.new_conversa_id && !sentFromChatId) {
           setCurrentChatId(response.new_conversa_id);
           fetchConversations();
         }
       } else {
-        response = await conversarAnonimo(trimmedInput);
+        response = await conversarAnonimo(trimmedInput, controller.signal);
+      }
+
+      if (controller.signal.aborted) {
+        console.log("Request aborted, not setting bot message.");
+        return;
       }
 
       const botMessage = {
         id: crypto.randomUUID(),
         sender: "bot",
         text: response.resposta,
-        animate: true, // Animar apenas novas mensagens do bot
+        animate: true,
       };
       setMessages((prev) => [...prev, botMessage]);
       speakResponse(response.resposta);
     } catch (error) {
-      const errorMessage = {
-        id: crypto.randomUUID(),
-        sender: "bot",
-        text: "Desculpe, ocorreu um erro ao se comunicar com o servidor.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-      speakResponse(errorMessage.text);
+      if (error.name === 'AbortError') {
+        console.log('Fetch aborted');
+      } else {
+        const errorMessage = {
+          id: crypto.randomUUID(),
+          sender: "bot",
+          text: "Desculpe, ocorreu um erro.",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        speakResponse(errorMessage.text);
+      }
     } finally {
-      setIsBotTyping(false);
+      // Only stop typing indicator if the chat context hasn't changed
+      if (currentChatId === sentFromChatId) {
+        setIsBotTyping(false);
+      }
     }
   };
 
@@ -282,6 +313,10 @@ function ChatContent() {
 
   // Limpa a tela para uma nova conversa
   const startNewChat = () => {
+    if (requestCancellationRef.current) {
+      requestCancellationRef.current.cancel();
+    }
+    setIsBotTyping(false);
     setChatBodyAnimationClass("fade-out");
     setTimeout(() => {
       setCurrentChatId(null);
@@ -291,6 +326,10 @@ function ChatContent() {
   };
 
   const loadChat = async (id) => {
+    if (requestCancellationRef.current) {
+      requestCancellationRef.current.cancel();
+    }
+    setIsBotTyping(false);
     try {
       const response = await getMessagesForConversation(id);
       setCurrentChatId(id);
@@ -306,16 +345,27 @@ function ChatContent() {
     }
   };
 
-  const deleteChat = async (idToDelete) => {
+  const deleteChat = (id) => {
+    setChatToDelete(id);
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!chatToDelete) return;
     try {
-      await deleteConversation(idToDelete);
+      await deleteConversation(chatToDelete);
+      addToast("Conversa deletada com sucesso.", "success");
       fetchConversations(); // Atualiza a lista
-      if (currentChatId === idToDelete) {
+      if (currentChatId === chatToDelete) {
         setCurrentChatId(null);
         setMessages([]);
       }
     } catch (error) {
+      addToast("Erro ao deletar conversa.", "error");
       console.error("Erro ao deletar conversa", error);
+    } finally {
+      setDeleteModalVisible(false);
+      setChatToDelete(null);
     }
   };
 
@@ -340,8 +390,37 @@ function ChatContent() {
       .trim();
   };
 
+  const handleHistoryClick = () => {
+    if (!isAuthenticated) {
+      setLoginPromptVisible(true);
+    } else {
+      setHistoryVisible((prev) => !prev);
+    }
+  };
+
+  const handleNewChatClick = () => {
+    if (!isAuthenticated) {
+      setLoginPromptVisible(true);
+    } else {
+      startNewChat();
+    }
+  };
+
   return (
     <>
+      {isLoginPromptVisible && (
+        <LoginPrompt
+          onDismiss={() => setLoginPromptVisible(false)}
+          showContinueAsGuest={false}
+        />
+      )}
+      <ConfirmationModal
+        isOpen={isDeleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={handleConfirmDelete}
+        title="Confirmar Exclusão"
+        message="Você tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita."
+      />
       <HistoryPanel
         isVisible={isHistoryVisible}
         onClose={() => setHistoryVisible(false)}
@@ -355,8 +434,7 @@ function ChatContent() {
         <header className="galaxy-chat-header">
           <button
             className="header-icon-btn"
-            onClick={() => setHistoryVisible(!isHistoryVisible)}
-            disabled={!isAuthenticated}
+            onClick={handleHistoryClick}
           >
             <FiClock />
           </button>
@@ -385,9 +463,8 @@ function ChatContent() {
             </button>
             <button
               className="header-icon-btn"
-              onClick={() => startNewChat()}
+              onClick={handleNewChatClick}
               title="Novo Chat"
-              disabled={!isAuthenticated}
             >
               <FiPlus />
             </button>
