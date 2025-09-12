@@ -35,7 +35,20 @@
 }
 
 .galaxy-chat-area.history-open {
-  transform: translateX(300px);
+  /* This transform was pushing the content. It's removed. */
+}
+
+/* Adiciona um overlay escuro quando o histórico está aberto, agora para todas as telas */
+.galaxy-chat-area.history-open::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  transition: background-color 0.4s ease-in-out;
 }
 
 .galaxy-chat-header {
@@ -572,7 +585,7 @@
     height: 100dvh; /* Usa a altura dinâmica da viewport para se ajustar ao teclado móvel */
     max-height: none;
     border-radius: 0;
-    transform: translateX(0) !important; /* Impede o deslocamento quando o histórico está aberto */
+    /* The transform is no longer needed here */
   }
 
   .history-panel {
@@ -580,17 +593,7 @@
     max-width: 320px;
   }
 
-  /* Adiciona um overlay escuro quando o histórico está aberto */
-  .galaxy-chat-area.history-open::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 99;
-  }
+  /* The overlay is now handled globally */
 
   .galaxy-chat-header {
     padding: 0.8rem 1rem;

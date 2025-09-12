@@ -16,6 +16,8 @@ import { FaVolumeUp, FaVolumeMute } from "react-icons/fa";
 import { RiRobot2Line } from "react-icons/ri";
 import { Link } from "react-router-dom";
 import AnimatedBotMessage from "../../components/AnimatedBotMessage";
+import LoginPrompt from "../../components/LoginPrompt";
+import ConfirmationModal from "../../components/ConfirmationModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   conversarAnonimo,
@@ -23,6 +25,7 @@ import {
   getMessagesForConversation,
   postMessage,
   deleteConversation,
+  generateImage,
 } from "../../services/LyriaApi";
 import { useToast } from "../../context/ToastContext";
 
@@ -149,6 +152,8 @@ function ChatContent() {
   const [isHistoryVisible, setHistoryVisible] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const chatBodyRef = useRef(null);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
 
   const [conversations, setConversations] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
@@ -158,8 +163,9 @@ function ChatContent() {
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
   const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
   const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
-  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
-  const chatBodyRef = useRef(null);
+  const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
 
   const fetchConversations = async () => {
     if (isAuthenticated && user) {
@@ -204,7 +210,6 @@ function ChatContent() {
     const chatBody = chatBodyRef.current;
     if (chatBody) {
       const { scrollTop, scrollHeight, clientHeight } = chatBody;
-      // A tolerância de 5px ajuda a evitar problemas de precisão de float
       const atBottom = scrollHeight - scrollTop <= clientHeight + 5;
       setIsUserScrolledUp(!atBottom);
     }
@@ -230,13 +235,61 @@ function ChatContent() {
     );
   };
 
+  const handleImageGeneration = async (command) => {
+    const prompt = command.replace('/desenhe', '').trim();
+    if (!prompt) {
+      addToast("Por favor, forneça um texto para gerar a imagem.", "warning");
+      return;
+    }
+
+    setIsUserScrolledUp(false);
+    const userMessage = {
+      id: crypto.randomUUID(),
+      sender: 'user',
+      text: command,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsBotTyping(true);
+
+    try {
+      const response = await generateImage(prompt);
+      const imageUrl = URL.createObjectURL(response);
+
+      const botMessage = {
+        id: crypto.randomUUID(),
+        sender: 'bot',
+        type: 'image',
+        url: imageUrl,
+        text: `Imagem gerada para: "${prompt}"`,
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Erro ao gerar imagem:", error);
+      addToast("Desculpe, não foi possível gerar a imagem.", "error");
+      const errorMessage = {
+        id: crypto.randomUUID(),
+        sender: "bot",
+        text: "Desculpe, ocorreu um erro ao gerar a imagem.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsBotTyping(false);
+    }
+  };
+
   const handleSend = async (textToSend) => {
     const trimmedInput = (
       typeof textToSend === "string" ? textToSend : input
     ).trim();
     if (!trimmedInput || isBotTyping || isListening) return;
 
-    setIsUserScrolledUp(false); // Força o scroll para baixo ao enviar
+    if (trimmedInput.startsWith('/desenhe')) {
+      handleImageGeneration(trimmedInput);
+      return;
+    }
+
+    setIsUserScrolledUp(false);
     const userMessage = {
       id: crypto.randomUUID(),
       sender: "user",
@@ -249,12 +302,9 @@ function ChatContent() {
     try {
       let response;
       if (isAuthenticated && user) {
-        // Usa o ID da conversa atual. Se for nulo, o backend criará uma nova.
         const chatIdToUse = currentChatId;
         response = await postMessage(user.nome, chatIdToUse, trimmedInput);
 
-        // Se uma nova conversa foi criada, o backend retorna um novo ID.
-        // Atualizamos nosso estado para que a *próxima* mensagem use esse novo ID.
         if (response.new_conversa_id && !chatIdToUse) {
           setCurrentChatId(response.new_conversa_id);
           fetchConversations();
@@ -267,7 +317,7 @@ function ChatContent() {
         id: crypto.randomUUID(),
         sender: "bot",
         text: response.resposta,
-        animate: true, // Animar apenas novas mensagens do bot
+        animate: true,
       };
       setMessages((prev) => [...prev, botMessage]);
       speakResponse(response.resposta);
@@ -295,21 +345,19 @@ function ChatContent() {
     /* ... (lógica do microfone inalterada) ... */
   };
 
-  // Limpa a tela para uma nova conversa
   const startNewChat = () => {
     setChatBodyAnimationClass("fade-out");
     setTimeout(() => {
       setCurrentChatId(null);
       setMessages([]);
       setChatBodyAnimationClass("fade-in");
-    }, 500); // Duração da animação de fade-out
+    }, 500);
   };
 
   const loadChat = async (id) => {
     try {
       const response = await getMessagesForConversation(id);
       setCurrentChatId(id);
-      // Adiciona a propriedade 'animate: false' para mensagens carregadas
       const historicalMessages = response.mensagens.map((msg) => ({
         ...msg,
         animate: false,
@@ -321,16 +369,27 @@ function ChatContent() {
     }
   };
 
-  const deleteChat = async (idToDelete) => {
+  const deleteChat = (id) => {
+    setChatToDelete(id);
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!chatToDelete) return;
     try {
-      await deleteConversation(idToDelete);
-      fetchConversations(); // Atualiza a lista
-      if (currentChatId === idToDelete) {
+      await deleteConversation(chatToDelete);
+      addToast("Conversa deletada com sucesso.", "success");
+      fetchConversations();
+      if (currentChatId === chatToDelete) {
         setCurrentChatId(null);
         setMessages([]);
       }
     } catch (error) {
+      addToast("Erro ao deletar conversa.", "error");
       console.error("Erro ao deletar conversa", error);
+    } finally {
+      setDeleteModalVisible(false);
+      setChatToDelete(null);
     }
   };
 
@@ -339,24 +398,48 @@ function ChatContent() {
 
   const stripMarkdown = (text) => {
     return text
-      // Remove code blocks
       .replace(/```[\s\S]*?```/g, ' ')
-      // Remove inline code
       .replace(/`/g, '')
-      // Remove bold and italics
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
-      // Remove headings
       .replace(/#{1,6}\s/g, '')
-      // Remove links, keeping the text
       .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-      // Remove images
       .replace(/!\[[^\]]*\]\([^\)]+\)/g, ' ')
       .trim();
   };
 
+  const handleHistoryClick = () => {
+    if (!isAuthenticated) {
+      setLoginPromptVisible(true);
+    } else {
+      setHistoryVisible((prev) => !prev);
+    }
+  };
+
+  const handleNewChatClick = () => {
+    if (!isAuthenticated) {
+      setLoginPromptVisible(true);
+    } else {
+      startNewChat();
+    }
+  };
+
   return (
     <>
+      {isLoginPromptVisible && (
+        <LoginPrompt
+          onDismiss={() => setLoginPromptVisible(false)}
+          onContinueAsGuest={() => setLoginPromptVisible(false)}
+          showContinueAsGuest={true}
+        />
+      )}
+      <ConfirmationModal
+        isOpen={isDeleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={handleConfirmDelete}
+        title="Confirmar Exclusão"
+        message="Você tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita."
+      />
       <HistoryPanel
         isVisible={isHistoryVisible}
         onClose={() => setHistoryVisible(false)}
@@ -370,8 +453,7 @@ function ChatContent() {
         <header className="galaxy-chat-header">
           <button
             className="header-icon-btn"
-            onClick={() => setHistoryVisible(!isHistoryVisible)}
-            disabled={!isAuthenticated}
+            onClick={handleHistoryClick}
           >
             <FiClock />
           </button>
@@ -400,9 +482,8 @@ function ChatContent() {
             </button>
             <button
               className="header-icon-btn"
-              onClick={() => startNewChat()}
+              onClick={handleNewChatClick}
               title="Novo Chat"
-              disabled={!isAuthenticated}
             >
               <FiPlus />
             </button>
@@ -429,11 +510,15 @@ function ChatContent() {
                   <span className="sender-name">
                     {msg.sender === "bot" ? "LyrIA" : "Você"}
                   </span>
-                  <AnimatedBotMessage
-                    fullText={msg.text}
-                    animate={msg.animate}
-                  />
-                  {msg.sender === "bot" && (
+                  {msg.type === 'image' ? (
+                    <img src={msg.url} alt={msg.text} className="generated-image" />
+                  ) : (
+                    <AnimatedBotMessage
+                      fullText={msg.text}
+                      animate={msg.animate}
+                    />
+                  )}
+                  {msg.sender === "bot" && msg.type !== 'image' && (
                     <button
                       className="copy-btn"
                       onClick={() =>
