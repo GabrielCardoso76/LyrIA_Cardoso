@@ -5,17 +5,61 @@ import {
   TextInput,
   StyleSheet,
   FlatList,
-  SafeAreaView,
-  ActivityIndicator,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
+  Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { conversarAnonimo } from '../services/LyriaApi';
 
-const Header = () => (
+const dummyConversations = [
+  { id: '1', titulo: 'Ideias de Projeto em React' },
+  { id: '2', titulo: 'Melhor turma do SENAI' },
+  { id: '3', titulo: 'Como você funciona?' },
+  { id: '4', titulo: 'Receita de bolo de chocolate' },
+];
+
+const HistoryPanel = ({ isVisible, onClose, conversations }) => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isVisible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.historyOverlay}>
+        <View style={[styles.historyPanel, { paddingTop: insets.top }]}>
+          <View style={styles.historyHeader}>
+            <Text style={styles.historyTitle}>Histórico</Text>
+            <TouchableOpacity onPress={onClose} style={styles.headerIcon}>
+              <Text style={styles.closeIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={conversations}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.historyItem}>
+                <Text style={styles.historyItemText}>{item.titulo}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const Header = ({ onHistoryPress }) => (
   <View style={styles.header}>
+    <TouchableOpacity onPress={onHistoryPress} style={styles.headerIcon}>
+      <Text style={styles.historyIcon}>☰</Text>
+    </TouchableOpacity>
     <Text style={styles.headerTitle}>LyrIA</Text>
+    <View style={{ width: 40 }} />
   </View>
 );
 
@@ -23,7 +67,9 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isBotTyping, setIsBotTyping] = useState(false);
+  const [isHistoryVisible, setHistoryVisible] = useState(false);
   const flatListRef = useRef();
+  const insets = useSafeAreaInsets();
 
   const handleSend = async () => {
     if (input.trim() && !isBotTyping) {
@@ -56,12 +102,17 @@ const ChatScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header />
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <StatusBar barStyle="light-content" />
+      <HistoryPanel
+        isVisible={isHistoryVisible}
+        onClose={() => setHistoryVisible(false)}
+        conversations={dummyConversations}
+      />
+      <Header onHistoryPress={() => setHistoryVisible(true)} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <FlatList
           ref={flatListRef}
@@ -92,7 +143,7 @@ const ChatScreen = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -102,9 +153,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A051E',
   },
   header: {
-    padding: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   headerTitle: {
@@ -113,6 +167,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: 3,
     textTransform: 'uppercase',
+  },
+  headerIcon: {
+    padding: 5,
+  },
+  historyIcon: {
+    color: '#c9b6f2',
+    fontSize: 28,
+  },
+  closeIcon: {
+    color: '#c9b6f2',
+    fontSize: 24,
   },
   messagesList: {
     padding: 15,
@@ -170,7 +235,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    margin: 15,
+    marginHorizontal: 15,
+    marginBottom: 10,
     backgroundColor: 'rgba(10, 5, 30, 0.8)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -208,6 +274,40 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: '#c9b6f2',
     fontSize: 14,
+  },
+  // History Panel Styles
+  historyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  historyPanel: {
+    width: '85%',
+    height: '100%',
+    backgroundColor: '#130f2f',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  historyHeader: {
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  historyTitle: {
+    color: '#f0f0f0',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  historyItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  historyItemText: {
+    color: '#f0f0f0',
+    fontSize: 16,
   },
 });
 

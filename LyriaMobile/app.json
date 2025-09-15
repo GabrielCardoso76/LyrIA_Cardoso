@@ -1,4 +1,15 @@
 {
-  "name": "LyriaMobile",
-  "displayName": "LyriaMobile"
+  "expo": {
+    "name": "LyriaMobile",
+    "slug": "LyriaMobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.anonymous.LyriaMobile"
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.LyriaMobile"
+    }
+  }
 }
