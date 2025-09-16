@@ -6,14 +6,34 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 
-const RegistrationScreen = ({ onNavigateToLogin }) => {
+const RegistrationScreen = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const { register } = useAuth();
+
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      return;
+    }
+    setIsLoading(true);
+    const response = await register(name, email, password);
+    setIsLoading(false);
+    if (!response.sucesso) {
+      Alert.alert('Erro no Cadastro', response.erro || 'Não foi possível fazer o cadastro.');
+    }
+  };
+
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -28,6 +48,7 @@ const RegistrationScreen = ({ onNavigateToLogin }) => {
           onChangeText={setName}
           placeholder="Nome Completo"
           placeholderTextColor="#8e8e93"
+          editable={!isLoading}
         />
         <TextInput
           style={styles.input}
@@ -37,6 +58,7 @@ const RegistrationScreen = ({ onNavigateToLogin }) => {
           placeholderTextColor="#8e8e93"
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!isLoading}
         />
         <TextInput
           style={styles.input}
@@ -45,13 +67,14 @@ const RegistrationScreen = ({ onNavigateToLogin }) => {
           placeholder="Senha"
           placeholderTextColor="#8e8e93"
           secureTextEntry
+          editable={!isLoading}
         />
 
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Cadastrar</Text>
+        <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={isLoading}>
+          <Text style={styles.buttonText}>{isLoading ? 'Cadastrando...' : 'Cadastrar'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton} onPress={onNavigateToLogin}>
+        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Login')} disabled={isLoading}>
           <Text style={styles.linkText}>Já tem uma conta? Faça login</Text>
         </TouchableOpacity>
       </View>
