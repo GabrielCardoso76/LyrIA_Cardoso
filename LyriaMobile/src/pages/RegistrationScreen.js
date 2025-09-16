@@ -11,26 +11,39 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const RegistrationScreen = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { register } = useAuth();
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
+    if (password !== confirmPassword) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
     setIsLoading(true);
-    const response = await register(name, email, password);
-    setIsLoading(false);
-    if (!response.sucesso) {
-      Alert.alert('Erro no Cadastro', response.erro || 'Não foi possível fazer o cadastro.');
+    try {
+      const response = await register(name, email, password);
+       if (!response.sucesso) {
+        Alert.alert('Erro no Cadastro', response.erro || 'Não foi possível fazer o cadastro.');
+      }
+    } catch (error) {
+       Alert.alert('Erro no Cadastro', error.erro || 'Ocorreu um erro inesperado.');
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -60,15 +73,34 @@ const RegistrationScreen = () => {
           autoCapitalize="none"
           editable={!isLoading}
         />
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Senha"
-          placeholderTextColor="#8e8e93"
-          secureTextEntry
-          editable={!isLoading}
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Senha"
+            placeholderTextColor="#8e8e93"
+            secureTextEntry={!isPasswordVisible}
+            editable={!isLoading}
+          />
+          <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.eyeIcon}>
+            <Ionicons name={isPasswordVisible ? 'eye-off' : 'eye'} size={24} color="#8e8e93" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Confirmar Senha"
+            placeholderTextColor="#8e8e93"
+            secureTextEntry={!isConfirmPasswordVisible}
+            editable={!isLoading}
+          />
+          <TouchableOpacity onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)} style={styles.eyeIcon}>
+            <Ionicons name={isConfirmPasswordVisible ? 'eye-off' : 'eye'} size={24} color="#8e8e93" />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={isLoading}>
           <Text style={styles.buttonText}>{isLoading ? 'Cadastrando...' : 'Cadastrar'}</Text>
@@ -114,6 +146,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  passwordInput: {
+    flex: 1,
+    color: '#f0f0f0',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    fontSize: 16,
+  },
+  eyeIcon: {
+    padding: 15,
   },
   button: {
     backgroundColor: '#6344a6',

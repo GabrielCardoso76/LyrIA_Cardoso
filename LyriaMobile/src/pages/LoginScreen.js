@@ -6,16 +6,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -27,10 +28,15 @@ const LoginScreen = () => {
       return;
     }
     setIsLoading(true);
-    const response = await login(email, password);
-    setIsLoading(false);
-    if (!response.sucesso) {
-      Alert.alert('Erro no Login', response.erro || 'Não foi possível fazer o login.');
+    try {
+      const response = await login(email, password);
+      if (!response.sucesso) {
+        Alert.alert('Erro no Login', response.erro || 'Não foi possível fazer o login.');
+      }
+    } catch (error) {
+       Alert.alert('Erro no Login', error.erro || 'Ocorreu um erro inesperado.');
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -51,15 +57,20 @@ const LoginScreen = () => {
           autoCapitalize="none"
           editable={!isLoading}
         />
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Senha"
-          placeholderTextColor="#8e8e93"
-          secureTextEntry
-          editable={!isLoading}
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Senha"
+            placeholderTextColor="#8e8e93"
+            secureTextEntry={!isPasswordVisible}
+            editable={!isLoading}
+          />
+          <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.eyeIcon}>
+            <Ionicons name={isPasswordVisible ? 'eye-off' : 'eye'} size={24} color="#8e8e93" />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
           <Text style={styles.buttonText}>{isLoading ? 'Entrando...' : 'Entrar'}</Text>
@@ -74,7 +85,7 @@ const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+    container: {
     flex: 1,
     backgroundColor: '#0A051E',
     justifyContent: 'center',
@@ -105,6 +116,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  passwordInput: {
+    flex: 1,
+    color: '#f0f0f0',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    fontSize: 16,
+  },
+  eyeIcon: {
+    padding: 15,
   },
   button: {
     backgroundColor: '#6344a6',
