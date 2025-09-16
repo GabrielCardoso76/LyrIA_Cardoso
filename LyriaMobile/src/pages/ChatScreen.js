@@ -18,6 +18,7 @@ import { conversar, getConversa } from '../services/LyriaApi';
 import { useRoute, useIsFocused, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import TypingIndicator from '../components/TypingIndicator';
 
 const ChatHeader = ({ onNewChat, onToggleVoice, onHistory }) => (
   <View style={styles.header}>
@@ -50,11 +51,6 @@ const ChatScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation();
 
-  useEffect(() => {
-    if (isFocused && !route.params?.conversationId) {
-      handleNewChat();
-    }
-  }, [isFocused, route.params?.conversationId]);
 
   useEffect(() => {
     const conversationId = route.params?.conversationId;
@@ -121,7 +117,11 @@ const ChatScreen = () => {
 
   const renderItem = ({ item }) => (
     <View style={[styles.messageWrapper, item.sender === 'user' ? styles.userMessageWrapper : styles.botMessageWrapper]}>
-      <View style={[styles.avatar, item.sender === 'user' ? styles.userAvatar : styles.botAvatar]} />
+        {item.sender === 'user' && user?.foto_perfil_url ? (
+            <Image source={{ uri: `http://172.20.10.12:5001${user.foto_perfil_url}` }} style={styles.avatar} />
+        ) : (
+            <View style={[styles.avatar, item.sender === 'user' ? styles.userAvatar : styles.botAvatar]} />
+        )}
       <View style={[styles.messageContainer, item.sender === 'user' ? styles.userMessageContainer : styles.botMessageContainer]}>
         <Text style={styles.senderName}>{item.sender === 'bot' ? 'LyrIA' : user?.nome || 'Você'}</Text>
         <MarkdownRenderer content={item.text} />
@@ -143,12 +143,12 @@ const ChatScreen = () => {
       <ChatHeader
         onNewChat={handleNewChat}
         onToggleVoice={() => Alert.alert('Funcionalidade em desenvolvimento', 'A funcionalidade de voz ainda não foi implementada.')}
-        onHistory={() => navigation.navigate('Histórico')}
+        onHistory={() => navigation.navigate('History')}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={insets.top + insets.bottom + 50} // 50 is the header height
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -162,7 +162,7 @@ const ChatScreen = () => {
         {isBotTyping && (
           <View style={styles.typingIndicatorContainer}>
              <View style={[styles.avatar, styles.botAvatar]} />
-            <Text style={styles.typingText}>LyrIA is typing...</Text>
+             <TypingIndicator />
           </View>
         )}
         <View style={styles.inputContainer}>
@@ -194,15 +194,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
    header: {
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingVertical: 15,
     paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 50,
   },
   headerTitle: {
     color: '#f0f0f0',

@@ -17,7 +17,12 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MainStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+        screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+        }}
+    >
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen name="History" component={HistoryScreen} />
     </Stack.Navigator>

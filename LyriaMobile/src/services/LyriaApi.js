@@ -46,10 +46,13 @@ export const updateUserProfile = async (userId, userData) => {
 
 
 // LYRIA
-export const conversar = async (username, pergunta, historico, signal) => {
+export const conversar = async (username, pergunta, historico, conversa_id, signal) => {
   try {
-    // The backend expects 'pergunta' and optional 'conversa_id'
-    const response = await api.post(`/Lyria/${username}/conversar`, { pergunta, historico }, { signal });
+    const payload = { pergunta, historico };
+    if (conversa_id) {
+      payload.conversa_id = conversa_id;
+    }
+    const response = await api.post(`/Lyria/${username}/conversar`, payload, { signal });
     return response.data;
   } catch (error) {
     if (error.name === 'AbortError') {
