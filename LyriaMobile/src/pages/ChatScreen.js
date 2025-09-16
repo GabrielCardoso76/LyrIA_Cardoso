@@ -9,18 +9,89 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { conversar } from '../services/LyriaApi';
+import { conversar, getConversa } from '../services/LyriaApi';
+import { useRoute, useIsFocused, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import MarkdownRenderer from '../components/MarkdownRenderer';
+
+const ChatHeader = ({ onNewChat, onToggleVoice, onHistory }) => (
+  <View style={styles.header}>
+    <TouchableOpacity onPress={onHistory} style={styles.headerButton}>
+      <Ionicons name="time-outline" size={24} color="#c9b6f2" />
+    </TouchableOpacity>
+    <Text style={styles.headerTitle}>LyrIA</Text>
+    <View style={styles.headerRight}>
+        <TouchableOpacity onPress={onNewChat} style={styles.headerButton}>
+            <Ionicons name="add" size={28} color="#c9b6f2" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onToggleVoice} style={styles.headerButton}>
+            <Ionicons name="mic-off-outline" size={24} color="#c9b6f2" />
+        </TouchableOpacity>
+    </View>
+  </View>
+);
+
 
 const ChatScreen = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isBotTyping, setIsBotTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
   const flatListRef = useRef();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const route = useRoute();
+  const isFocused = useIsFocused();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    if (isFocused && !route.params?.conversationId) {
+      handleNewChat();
+    }
+  }, [isFocused, route.params?.conversationId]);
+
+  useEffect(() => {
+    const conversationId = route.params?.conversationId;
+    if (conversationId) {
+      setCurrentConversationId(conversationId);
+      loadConversation(conversationId);
+    } else {
+        handleNewChat();
+    }
+  }, [route.params?.conversationId]);
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentConversationId(null);
+    // This is to clear the conversationId from the route params
+    // so that if we navigate back to this screen it starts a new chat.
+    navigation.setParams({ conversationId: undefined });
+  }
+
+  const loadConversation = async (conversationId) => {
+    try {
+      setIsLoading(true);
+      const response = await getConversa(conversationId);
+      if (response.mensagens) {
+        const formattedMessages = response.mensagens.map(msg => ({
+          id: msg.id.toString(),
+          text: msg.conteudo,
+          sender: msg.remetente === 'usuario' ? 'user' : 'bot',
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSend = async () => {
     if (input.trim() && !isBotTyping && user) {
@@ -30,8 +101,13 @@ const ChatScreen = () => {
       setIsBotTyping(true);
 
       try {
-        // We are passing an empty history for now. This will be updated in a later step.
-        const response = await conversar(user.nome, input, []);
+        const history = messages.map(msg => msg.text);
+        const response = await conversar(user.nome, input, history, currentConversationId);
+
+        if (response.new_conversa_id) {
+            setCurrentConversationId(response.new_conversa_id);
+        }
+
         const botMessage = { id: Date.now().toString(), text: response.resposta, sender: 'bot' };
         setMessages(prevMessages => [...prevMessages, botMessage]);
       } catch (error) {
@@ -48,18 +124,31 @@ const ChatScreen = () => {
       <View style={[styles.avatar, item.sender === 'user' ? styles.userAvatar : styles.botAvatar]} />
       <View style={[styles.messageContainer, item.sender === 'user' ? styles.userMessageContainer : styles.botMessageContainer]}>
         <Text style={styles.senderName}>{item.sender === 'bot' ? 'LyrIA' : user?.nome || 'Você'}</Text>
-        <Text style={styles.messageText}>{item.text}</Text>
+        <MarkdownRenderer content={item.text} />
       </View>
     </View>
   );
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#c9b6f2" />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle="light-content" />
+      <ChatHeader
+        onNewChat={handleNewChat}
+        onToggleVoice={() => Alert.alert('Funcionalidade em desenvolvimento', 'A funcionalidade de voz ainda não foi implementada.')}
+        onHistory={() => navigation.navigate('Histórico')}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={insets.top + insets.bottom}
+        keyboardVerticalOffset={insets.top + insets.bottom + 50} // 50 is the header height
       >
         <FlatList
           ref={flatListRef}
@@ -95,9 +184,39 @@ const ChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: {
+  container: {
     flex: 1,
     backgroundColor: '#0A051E',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+   header: {
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 50,
+  },
+  headerTitle: {
+    color: '#f0f0f0',
+    fontSize: 20,
+    fontWeight: '500',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
+  headerRight: {
+    flexDirection: 'row',
+  },
+  headerButton: {
+    padding: 5,
+    marginLeft: 10,
   },
   messagesList: {
     padding: 15,

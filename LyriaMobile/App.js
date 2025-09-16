@@ -7,12 +7,21 @@ import ChatScreen from './src/pages/ChatScreen';
 import LoginScreen from './src/pages/LoginScreen';
 import RegistrationScreen from './src/pages/RegistrationScreen';
 import ProfileScreen from './src/pages/ProfileScreen';
+import HistoryScreen from './src/pages/HistoryScreen';
+import SettingsScreen from './src/pages/SettingsScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const MainStack = () => (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="MainTabs" component={TabNavigator} />
+        <Stack.Screen name="History" component={HistoryScreen} />
+    </Stack.Navigator>
+)
 
 const TabNavigator = () => {
   return (
@@ -26,6 +35,8 @@ const TabNavigator = () => {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Perfil') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'Configurações') {
+            iconName = focused ? 'settings' : 'settings-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -40,6 +51,7 @@ const TabNavigator = () => {
     >
       <Tab.Screen name="Chat" component={ChatScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
+      <Tab.Screen name="Configurações" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
@@ -59,7 +71,7 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen name="Main" component={MainStack} />
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
