@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,67 +9,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { conversarAnonimo } from '../services/LyriaApi';
-
-const dummyConversations = [
-  { id: '1', titulo: 'Ideias de Projeto em React' },
-  { id: '2', titulo: 'Melhor turma do SENAI' },
-  { id: '3', titulo: 'Como você funciona?' },
-  { id: '4', titulo: 'Receita de bolo de chocolate' },
-];
-
-const HistoryPanel = ({ isVisible, onClose, conversations }) => {
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={isVisible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.historyOverlay}>
-        <View style={[styles.historyPanel, { paddingTop: insets.top }]}>
-          <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Histórico</Text>
-            <TouchableOpacity onPress={onClose} style={styles.headerIcon}>
-              <Text style={styles.closeIcon}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={conversations}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.historyItem}>
-                <Text style={styles.historyItemText}>{item.titulo}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-const Header = ({ onHistoryPress }) => (
-  <View style={styles.header}>
-    <TouchableOpacity onPress={onHistoryPress} style={styles.headerIcon}>
-      <Text style={styles.historyIcon}>☰</Text>
-    </TouchableOpacity>
-    <Text style={styles.headerTitle}>LyrIA</Text>
-    <View style={{ width: 40 }} />
-  </View>
-);
+import { useAuth } from '../context/AuthContext';
+import { conversar } from '../services/LyriaApi';
 
 const ChatScreen = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isBotTyping, setIsBotTyping] = useState(false);
-  const [isHistoryVisible, setHistoryVisible] = useState(false);
   const flatListRef = useRef();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const handleSend = async () => {
     if (input.trim() && !isBotTyping) {
@@ -79,7 +30,8 @@ const ChatScreen = () => {
       setIsBotTyping(true);
 
       try {
-        const response = await conversarAnonimo(input);
+        // We are passing an empty history for now. This will be updated in a later step.
+        const response = await conversar(input, []);
         const botMessage = { id: Date.now().toString(), text: response.resposta, sender: 'bot' };
         setMessages(prevMessages => [...prevMessages, botMessage]);
       } catch (error) {
@@ -95,7 +47,7 @@ const ChatScreen = () => {
     <View style={[styles.messageWrapper, item.sender === 'user' ? styles.userMessageWrapper : styles.botMessageWrapper]}>
       <View style={[styles.avatar, item.sender === 'user' ? styles.userAvatar : styles.botAvatar]} />
       <View style={[styles.messageContainer, item.sender === 'user' ? styles.userMessageContainer : styles.botMessageContainer]}>
-        <Text style={styles.senderName}>{item.sender === 'bot' ? 'LyrIA' : 'Você'}</Text>
+        <Text style={styles.senderName}>{item.sender === 'bot' ? 'LyrIA' : user?.nome || 'Você'}</Text>
         <Text style={styles.messageText}>{item.text}</Text>
       </View>
     </View>
@@ -104,15 +56,10 @@ const ChatScreen = () => {
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle="light-content" />
-      <HistoryPanel
-        isVisible={isHistoryVisible}
-        onClose={() => setHistoryVisible(false)}
-        conversations={dummyConversations}
-      />
-      <Header onHistoryPress={() => setHistoryVisible(true)} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={insets.top + insets.bottom}
       >
         <FlatList
           ref={flatListRef}
@@ -125,7 +72,7 @@ const ChatScreen = () => {
         />
         {isBotTyping && (
           <View style={styles.typingIndicatorContainer}>
-             <View style={styles.avatar} />
+             <View style={[styles.avatar, styles.botAvatar]} />
             <Text style={styles.typingText}>LyrIA is typing...</Text>
           </View>
         )}
@@ -148,36 +95,9 @@ const ChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+    container: {
     flex: 1,
     backgroundColor: '#0A051E',
-  },
-  header: {
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: '#f0f0f0',
-    fontSize: 20,
-    fontWeight: '500',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-  headerIcon: {
-    padding: 5,
-  },
-  historyIcon: {
-    color: '#c9b6f2',
-    fontSize: 28,
-  },
-  closeIcon: {
-    color: '#c9b6f2',
-    fontSize: 24,
   },
   messagesList: {
     padding: 15,
@@ -274,40 +194,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: '#c9b6f2',
     fontSize: 14,
-  },
-  // History Panel Styles
-  historyOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  historyPanel: {
-    width: '85%',
-    height: '100%',
-    backgroundColor: '#130f2f',
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  historyHeader: {
-    padding: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  historyTitle: {
-    color: '#f0f0f0',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  historyItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  historyItemText: {
-    color: '#f0f0f0',
-    fontSize: 16,
   },
 });
 

@@ -47,18 +47,6 @@ export const conversar = async (pergunta, historico, signal) => {
   }
 };
 
-export const conversarAnonimo = async (pergunta, signal) => {
-  try {
-    const response = await api.post('/Lyria/conversar_anonimo', { pergunta }, { signal });
-    return response.data;
-  } catch (error)
-    if (error.name !== 'AbortError') {
-      console.error("Erro ao conversar com a Lyria (anônimo):", error);
-    }
-    throw error;
-  }
-};
-
 
 // HISTORICO
 export const getHistorico = async (userId) => {
