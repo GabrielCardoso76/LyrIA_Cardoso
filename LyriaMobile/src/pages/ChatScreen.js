@@ -23,7 +23,7 @@ const ChatScreen = () => {
   const { user } = useAuth();
 
   const handleSend = async () => {
-    if (input.trim() && !isBotTyping) {
+    if (input.trim() && !isBotTyping && user) {
       const userMessage = { id: Date.now().toString(), text: input, sender: 'user' };
       setMessages(prevMessages => [...prevMessages, userMessage]);
       setInput('');
@@ -31,11 +31,11 @@ const ChatScreen = () => {
 
       try {
         // We are passing an empty history for now. This will be updated in a later step.
-        const response = await conversar(input, []);
+        const response = await conversar(user.nome, input, []);
         const botMessage = { id: Date.now().toString(), text: response.resposta, sender: 'bot' };
         setMessages(prevMessages => [...prevMessages, botMessage]);
       } catch (error) {
-        const errorMessage = { id: Date.now().toString(), text: 'Sorry, something went wrong.', sender: 'bot' };
+        const errorMessage = { id: Date.now().toString(), text: error.erro || 'Sorry, something went wrong.', sender: 'bot' };
         setMessages(prevMessages => [...prevMessages, errorMessage]);
       } finally {
         setIsBotTyping(false);

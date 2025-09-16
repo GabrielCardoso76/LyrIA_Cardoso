@@ -2,14 +2,10 @@ import api from './api';
 
 const handleApiError = (error) => {
   if (error.response) {
-    // The request was made and the server responded with a status code
-    // that falls out of the range of 2xx
-    return error.response.data;
+    return { sucesso: false, erro: error.response.data.erro || 'Ocorreu um erro no servidor.' };
   } else if (error.request) {
-    // The request was made but no response was received
     return { sucesso: false, erro: 'Não foi possível se conectar ao servidor.' };
   } else {
-    // Something happened in setting up the request that triggered an Error
     return { sucesso: false, erro: 'Ocorreu um erro inesperado.' };
   }
 };
@@ -17,7 +13,7 @@ const handleApiError = (error) => {
 // USER
 export const loginUser = async (credentials) => {
   try {
-    const response = await api.post('/usuarios/login', credentials);
+    const response = await api.post('/Lyria/login', credentials);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -26,7 +22,8 @@ export const loginUser = async (credentials) => {
 
 export const registerUser = async (userData) => {
   try {
-    const response = await api.post('/usuarios/cadastro', userData);
+    // The backend expects 'nome', 'email', 'senha'
+    const response = await api.post('/Lyria/register', userData);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -36,7 +33,7 @@ export const registerUser = async (userData) => {
 export const updateUserProfile = async (userId, userData) => {
     const isFormData = userData instanceof FormData;
     try {
-        const response = await api.put(`/usuarios/perfil/${userId}`, userData, {
+        const response = await api.put(`/Lyria/profile/${userId}`, userData, {
             headers: {
                 'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
             },
@@ -49,9 +46,10 @@ export const updateUserProfile = async (userId, userData) => {
 
 
 // LYRIA
-export const conversar = async (pergunta, historico, signal) => {
+export const conversar = async (username, pergunta, historico, signal) => {
   try {
-    const response = await api.post('/Lyria/conversar', { pergunta, historico }, { signal });
+    // The backend expects 'pergunta' and optional 'conversa_id'
+    const response = await api.post(`/Lyria/${username}/conversar`, { pergunta, historico }, { signal });
     return response.data;
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -63,9 +61,9 @@ export const conversar = async (pergunta, historico, signal) => {
 
 
 // HISTORICO
-export const getHistorico = async (userId) => {
+export const getHistorico = async (username) => {
   try {
-    const response = await api.get(`/historico/usuario/${userId}`);
+    const response = await api.get(`/Lyria/${username}/historico`);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -74,16 +72,7 @@ export const getHistorico = async (userId) => {
 
 export const getConversa = async (conversaId) => {
   try {
-    const response = await api.get(`/historico/conversa/${conversaId}`);
-    return response.data;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-
-export const updateTituloConversa = async (conversaId, novoTitulo) => {
-  try {
-    const response = await api.put(`/historico/conversa/${conversaId}/titulo`, { novo_titulo: novoTitulo });
+    const response = await api.get(`/Lyria/conversas/${conversaId}/mensagens`);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -92,7 +81,7 @@ export const updateTituloConversa = async (conversaId, novoTitulo) => {
 
 export const deletarConversa = async (conversaId) => {
   try {
-    const response = await api.delete(`/historico/conversa/${conversaId}`);
+    const response = await api.delete(`/Lyria/conversas/${conversaId}`);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
