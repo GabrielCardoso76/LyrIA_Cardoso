@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react--native-async-storage/async-storage';
 import { loginUser, registerUser } from '../services/LyriaApi';
 
 const AuthContext = createContext();
@@ -10,11 +10,16 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const loadUserFromStorage = async () => {
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      try {
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (e) {
+        console.error("Failed to load user from storage", e);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     loadUserFromStorage();
@@ -30,7 +35,9 @@ export const AuthProvider = ({ children }) => {
       return response;
     } catch (error) {
       console.error('Login failed:', error);
-      return { sucesso: false, erro: 'An unexpected error occurred.' };
+      // The error is already in the format { sucesso: false, erro: '...' }
+      // from handleApiError in LyriaApi.js
+      return error;
     }
   };
 
@@ -38,24 +45,33 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await registerUser({ nome: name, email, senha: password });
       if (response.sucesso) {
-        setUser(response.usuario);
-        await AsyncStorage.setItem('user', JSON.stringify(response.usuario));
+        // After successful registration, log in to get the full user object
+        const loginResponse = await login(email, password);
+        return loginResponse;
       }
       return response;
     } catch (error) {
       console.error('Registration failed:', error);
-      return { sucesso: false, erro: 'An unexpected error occurred.' };
+      return error;
     }
   };
 
   const logout = async () => {
-    setUser(null);
-    await AsyncStorage.removeItem('user');
+    try {
+      setUser(null);
+      await AsyncStorage.removeItem('user');
+    } catch (e) {
+        console.error("Failed to logout", e);
+    }
   };
 
   const updateUser = async (updatedUser) => {
-    setUser(updatedUser);
-    await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    try {
+        setUser(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (e) {
+        console.error("Failed to update user in storage", e);
+    }
   };
 
 
