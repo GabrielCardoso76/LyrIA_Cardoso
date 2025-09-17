@@ -31,23 +31,55 @@ const ProfileScreen = () => {
   }, [user]);
 
   const handleImagePick = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos da sua permissão para acessar a galeria de fotos.');
-      return;
-    }
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setProfileImage(result.assets[0]);
-      setPreviewImage({ uri: result.assets[0].uri });
-    }
+    Alert.alert(
+      "Selecionar Imagem",
+      "Escolha uma opção",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel"
+        },
+        {
+          text: "Tirar Foto",
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permissão necessária', 'Precisamos da sua permissão para acessar a câmera.');
+              return;
+            }
+            let result = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 1,
+            });
+            if (!result.canceled) {
+              setProfileImage(result.assets[0]);
+              setPreviewImage({ uri: result.assets[0].uri });
+            }
+          }
+        },
+        {
+          text: "Escolher da Galeria",
+          onPress: async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permissão necessária', 'Precisamos da sua permissão para acessar a galeria de fotos.');
+              return;
+            }
+            let result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaType.Images,
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 1,
+            });
+            if (!result.canceled) {
+              setProfileImage(result.assets[0]);
+              setPreviewImage({ uri: result.assets[0].uri });
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleUpdateProfile = async () => {
