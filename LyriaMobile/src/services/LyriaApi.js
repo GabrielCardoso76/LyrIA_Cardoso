@@ -20,6 +20,15 @@ export const loginUser = async (credentials) => {
   }
 };
 
+export const listConversas = async (username) => {
+    try {
+        const response = await api.get(`/Lyria/${username}/conversas`);
+        return response.data;
+    } catch (error) {
+        throw handleApiError(error);
+    }
+};
+
 export const registerUser = async (userData) => {
   try {
     // The backend expects 'nome', 'email', 'senha'
