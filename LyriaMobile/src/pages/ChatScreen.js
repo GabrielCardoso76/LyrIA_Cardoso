@@ -23,7 +23,7 @@ import TypingIndicator from '../components/TypingIndicator';
 const ChatHeader = ({ onNewChat, onToggleVoice, onHistory }) => (
   <View style={styles.header}>
     <TouchableOpacity onPress={onHistory} style={styles.headerButton}>
-      <Ionicons name="time-outline" size={24} color="#c9b6f2" />
+      <Ionicons name="menu-outline" size={28} color="#c9b6f2" />
     </TouchableOpacity>
     <Text style={styles.headerTitle}>LyrIA</Text>
     <View style={styles.headerRight}>
@@ -60,7 +60,13 @@ const ChatScreen = () => {
     } else {
         handleNewChat();
     }
-  }, [route.params?.conversationId]);
+  }, [route.params?.conversationId, route.params?.timestamp]);
+
+  useEffect(() => {
+    if (isFocused) {
+      setInput(''); // Clear input on focus to prevent rendering glitches
+    }
+  }, [isFocused]);
 
   const handleNewChat = () => {
     setMessages([]);
@@ -143,7 +149,7 @@ const ChatScreen = () => {
       <ChatHeader
         onNewChat={handleNewChat}
         onToggleVoice={() => Alert.alert('Funcionalidade em desenvolvimento', 'A funcionalidade de voz ainda não foi implementada.')}
-        onHistory={() => navigation.navigate('History')}
+        onHistory={() => navigation.openDrawer()}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -170,7 +176,7 @@ const ChatScreen = () => {
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="Digite sua mensagem para LyrIA..."
+            placeholder="Digite sua mensagem..."
             placeholderTextColor="#8e8e93"
             editable={!isBotTyping}
           />
