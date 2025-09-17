@@ -1,23 +1,32 @@
-import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createDrawerNavigator } from '@react-navigation/drawer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ChatScreen from './src/pages/ChatScreen';
 import LoginScreen from './src/pages/LoginScreen';
 import RegistrationScreen from './src/pages/RegistrationScreen';
 import ProfileScreen from './src/pages/ProfileScreen';
+import HistoryScreen from './src/pages/HistoryScreen';
 import SettingsScreen from './src/pages/SettingsScreen';
-import DrawerContent from './src/components/DrawerContent';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-const Drawer = createDrawerNavigator();
+
+const MainStack = () => (
+    <Stack.Navigator
+        screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+        }}
+    >
+        <Stack.Screen name="MainTabs" component={TabNavigator} />
+        <Stack.Screen name="History" component={HistoryScreen} />
+    </Stack.Navigator>
+)
 
 const TabNavigator = () => {
   return (
@@ -52,22 +61,6 @@ const TabNavigator = () => {
   );
 }
 
-const MainDrawerNavigator = () => {
-    return (
-        <Drawer.Navigator
-            drawerContent={(props) => <DrawerContent {...props} />}
-            screenOptions={{
-                headerShown: false,
-                drawerStyle: {
-                    backgroundColor: '#130f2f',
-                },
-            }}
-        >
-            <Drawer.Screen name="MainTabs" component={TabNavigator} />
-        </Drawer.Navigator>
-    );
-};
-
 const AppNavigator = () => {
   const { user, isLoading } = useAuth();
 
@@ -83,7 +76,7 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Main" component={MainDrawerNavigator} />
+          <Stack.Screen name="Main" component={MainStack} />
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -94,6 +87,7 @@ const AppNavigator = () => {
     </NavigationContainer>
   );
 }
+
 
 function App() {
   return (

@@ -23,7 +23,7 @@ import TypingIndicator from '../components/TypingIndicator';
 const ChatHeader = ({ onNewChat, onToggleVoice, onHistory }) => (
   <View style={styles.header}>
     <TouchableOpacity onPress={onHistory} style={styles.headerButton}>
-      <Ionicons name="menu-outline" size={28} color="#c9b6f2" />
+      <Ionicons name="time-outline" size={24} color="#c9b6f2" />
     </TouchableOpacity>
     <Text style={styles.headerTitle}>LyrIA</Text>
     <View style={styles.headerRight}>
@@ -138,17 +138,17 @@ const ChatScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle="light-content" />
       <ChatHeader
         onNewChat={handleNewChat}
         onToggleVoice={() => Alert.alert('Funcionalidade em desenvolvimento', 'A funcionalidade de voz ainda não foi implementada.')}
-        onHistory={() => navigation.openDrawer()}
+        onHistory={() => navigation.navigate('History')}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 40 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -160,8 +160,8 @@ const ChatScreen = () => {
           onLayout={() => flatListRef.current.scrollToEnd({ animated: true })}
           ListFooterComponent={isBotTyping ? (
             <View style={styles.typingIndicatorContainer}>
-                <View style={[styles.avatar, styles.botAvatar]} />
-                <TypingIndicator />
+               <View style={[styles.avatar, styles.botAvatar]} />
+               <TypingIndicator />
             </View>
           ) : null}
         />
@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     marginHorizontal: 15,
+    marginBottom: 10,
     backgroundColor: 'rgba(10, 5, 30, 0.8)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -303,9 +304,9 @@ const styles = StyleSheet.create({
   typingIndicatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingTop: 15,
+    alignSelf: 'flex-start', // Align to the left like bot messages
     marginBottom: 15, // Match message wrapper spacing
+    paddingHorizontal: 15, // Match messagesList padding
   },
   typingText: {
     marginLeft: 10,
