@@ -92,7 +92,7 @@ def conversar(usuario):
             new_conversa_id = conversa_id # Marca que um novo ID foi criado
 
         mensagens_atuais = carregar_mensagens_da_conversa(conversa_id)
-        contexto_chat = [msg['text'] for msg in mensagens_atuais]
+        contexto_chat = [msg['conteudo'] for msg in mensagens_atuais]
 
         memorias = carregar_memorias(usuario)
         contexto_web = None
