@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime
 import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_NOME = os.path.join(os.path.dirname(__file__), "lyria.db")
 
@@ -124,9 +125,10 @@ def escolherApersona(persona, usuario):
     conn.commit()
     conn.close()
 
-def criarUsuario(nome, email, persona, senha_hash=None):
+def criarUsuario(nome, email, persona, senha):
     conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
     cursor = conn.cursor()
+    senha_hash = generate_password_hash(senha)
     cursor.execute("""
         INSERT INTO usuarios (nome, email, persona_escolhida, senha_hash, criado_em, ultimo_acesso)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -135,6 +137,17 @@ def criarUsuario(nome, email, persona, senha_hash=None):
     usuario_id = cursor.lastrowid
     conn.close()
     return usuario_id
+
+def verificar_usuario(email, senha):
+    conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
+    usuario = cursor.fetchone()
+    conn.close()
+    if usuario and usuario['senha_hash'] and check_password_hash(usuario['senha_hash'], senha):
+        return dict(usuario)
+    return None
 
 def procurarUsuarioPorEmail(usuarioEmail):
     conn = sqlite3.connect(DB_NOME, timeout=10, check_same_thread=False)

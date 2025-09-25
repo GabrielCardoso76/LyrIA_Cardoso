@@ -403,3 +403,32 @@ if __name__ == "__main__":
 
         print(f"\nLyria: {resposta}")
         salvarMensagem(usuario, entrada, resposta, modelo_usado="api", tokens=None)
+
+def gerar_imagem_hf(prompt: str):
+    """
+    Gera uma imagem usando a API de Inferência da Hugging Face.
+    """
+    api_key = os.getenv("HUGGING_FACE_API_KEY")
+    if not api_key:
+        return None, "A chave da API da Hugging Face (HUGGING_FACE_API_KEY) não foi encontrada."
+
+    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    payload = {"inputs": prompt}
+
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=120)
+
+        if response.status_code == 200:
+            return response.content, None
+        
+        error_data = response.json()
+        error_message = error_data.get("error", "Erro desconhecido na API.")
+        
+        if response.status_code == 503 and "is currently loading" in error_message:
+            return None, "O modelo de imagem está sendo carregado. Por favor, tente novamente em alguns instantes."
+            
+        return None, f"Erro na API da Hugging Face: {error_message}"
+
+    except requests.exceptions.RequestException as e:
+        return None, f"Erro de conexão ao gerar imagem: {e}"

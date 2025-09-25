@@ -1,11 +1,14 @@
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from testeDaIa import perguntar_ollama, buscar_na_web, get_persona_texto
+import io
+from testeDaIa import perguntar_ollama, buscar_na_web, get_persona_texto, gerar_imagem_hf
 from banco.banco import (
     pegarPersonaEscolhida, 
     escolherApersona, 
     criarUsuario, 
-    procurarUsuarioPorEmail, 
+    procurarUsuarioPorEmail,
+    verificar_usuario,
     pegarHistorico,
     criar_banco,
     salvarMensagem,
@@ -16,7 +19,7 @@ from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
 from waitress import serve
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/Lyria/*": {"origins": "*"}})
 
 @app.route('/Lyria/conversar', methods=['POST'])
 def conversarSemConta():
@@ -99,28 +102,48 @@ def set_persona_escolhida(usuario):
 @app.route('/Lyria/usuarios', methods=['POST'])
 def criar_usuario_route():
     data = request.get_json()
-    if not data or 'nome' not in data or 'email' not in data:
-        return jsonify({"erro": "Campos 'nome' e 'email' são obrigatórios"}), 400
+    if not data or 'nome' not in data or 'email' not in data or 'senha' not in data:
+        return jsonify({"erro": "Campos 'nome', 'email' e 'senha' são obrigatórios"}), 400
 
     nome = data['nome']
     email = data['email']
+    senha = data['senha']
     persona = data.get('persona', 'professor')
-    senha_hash = data.get('senha_hash')
     
     if persona not in ['professor', 'empresarial', 'social']:
         return jsonify({"erro": "Persona inválida. Use 'professor', 'empresarial' ou 'social'"}), 400
 
     try:
-        usuario_id = criarUsuario(nome, email, persona, senha_hash)
+        usuario_id = criarUsuario(nome, email, persona, senha)
         return jsonify({
             "sucesso": "Usuário criado com sucesso", 
             "id": usuario_id,
+            "nome": nome,
+            "email": email,
             "persona": persona
         }), 201
     except Exception as e:
         if "UNIQUE constraint" in str(e):
             return jsonify({"erro": "Usuário já existe"}), 409
         return jsonify({"erro": f"Erro ao criar usuário: {str(e)}"}), 500
+
+@app.route('/Lyria/login', methods=['POST'])
+def login_route():
+    data = request.get_json()
+    if not data or 'email' not in data or 'senha' not in data:
+        return jsonify({"erro": "Campos 'email' e 'senha' são obrigatórios"}), 400
+
+    email = data['email']
+    senha = data['senha']
+    
+    usuario = verificar_usuario(email, senha)
+    
+    if usuario:
+        # É crucial não enviar a senha hasheada de volta para o cliente
+        del usuario['senha_hash']
+        return jsonify({"sucesso": "Login bem-sucedido", "usuario": usuario})
+    else:
+        return jsonify({"erro": "Credenciais inválidas"}), 401
 
 @app.route('/Lyria/usuarios/<usuarioEmail>', methods=['GET'])
 def get_usuario(usuarioEmail):
@@ -144,6 +167,7 @@ def get_historico_recente(usuario):
     except Exception as e:
         return jsonify({"erro": f"Erro ao buscar histórico: {str(e)}"}), 500
 
+@app.route('/Lyria/Lyria/personas', methods=['GET']) # Rota de fallback para o bug de duplicação
 @app.route('/Lyria/personas', methods=['GET'])
 def listar_personas():
     personas = {
@@ -252,7 +276,44 @@ def listar_personas():
     }
     return jsonify({"personas": personas})
 
+@app.route('/Lyria/gerar-imagem', methods=['POST'])
+def gerar_imagem_endpoint():
+    data = request.get_json()
+    if not data or 'prompt' not in data:
+        return jsonify({"erro": "O campo 'prompt' é obrigatório."}), 400
+
+    prompt_original = data['prompt']
+    prompt_melhorado = f"{prompt_original}, high resolution, digital art, highly detailed"
+
+    try:
+        imagem_bytes, erro = gerar_imagem_hf(prompt_melhorado)
+
+        if erro:
+            if "modelo de imagem está sendo carregado" in erro:
+                return jsonify({"erro": erro}), 503
+            return jsonify({"erro": f"Falha ao gerar imagem: {erro}"}), 500
+
+        if imagem_bytes:
+            return send_file(
+                io.BytesIO(imagem_bytes),
+                mimetype='image/jpeg',
+                as_attachment=False,
+                download_name='imagem_gerada.jpeg'
+            )
+        
+        return jsonify({"erro": "Não foi possível gerar a imagem."}), 500
+
+    except Exception as e:
+        return jsonify({"erro": f"Erro interno no servidor: {str(e)}"}), 500
+
+@app.errorhandler(404)
+def page_not_found(e):
+    # Log para o terminal do backend para depuração
+    print(f"[DEBUG] Rota não encontrada recebida: {request.path}")
+    return jsonify(erro=f"A rota '{request.path}' não foi encontrada no servidor."), 404
+
 if __name__ == "__main__":
+    criar_banco()  # Garante que o banco e as tabelas existam ao iniciar
     port = int(os.environ.get("PORT", 5000))  
     serve(app, host="0.0.0.0", port=port)
 

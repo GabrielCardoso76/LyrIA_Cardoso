@@ -3,6 +3,7 @@ import Home from "../pages/InitialScreen";
 import RegistrationAndLogin from "../pages/RegistrationAndLoginScreen";
 import Chat from "../pages/ChatScreen";
 import LoadingScreen from "../components/LoadingScreen";
+import ImageGenerationScreen from "../pages/ImageGenerationScreen";
 
 
 export const routes = [
@@ -27,5 +28,10 @@ export const routes = [
     path: "/loading",
     name: "LoadingScreen",
     element: <LoadingScreen/>,
+  },
+  {
+    path: "/gerar-imagem",
+    name: "ImageGeneration",
+    element: <ImageGenerationScreen />,
   }
 ];
