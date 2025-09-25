@@ -1,8 +1,8 @@
 import api from "./api";
 
-export const conversarAnonimo = async (pergunta, signal) => {
+export const conversarAnonimo = async (pergunta, persona, signal) => {
   try {
-    const response = await api.post("/Lyria/conversar", { pergunta }, { signal });
+    const response = await api.post("/Lyria/conversar", { pergunta, persona }, { signal });
     return response.data;
   } catch (error) {
     if (error.name !== 'AbortError') {
@@ -68,7 +68,7 @@ export const getMessagesForConversation = async (conversationId) => {
 
 export const postMessage = async (username, conversationId, question, signal) => {
   try {
-    const response = await api.post(`/Lyria/${username}/conversar`, {
+    const response = await api.post(`/Lyria/conversar-logado`, {
       pergunta: question,
       conversa_id: conversationId,
     }, { signal });
@@ -81,9 +81,9 @@ export const postMessage = async (username, conversationId, question, signal) =>
   }
 };
 
-export const setPersona = async (usuario, persona) => {
+export const setPersona = async (persona) => {
   try {
-    const response = await api.post(`/Lyria/${usuario}/PersonaEscolhida`, {
+    const response = await api.post(`/Lyria/PersonaEscolhida`, {
       persona,
     });
     return response.data;
@@ -93,12 +93,22 @@ export const setPersona = async (usuario, persona) => {
   }
 };
 
-export const getPersona = async (usuario) => {
+export const getPersona = async () => {
   try {
-    const response = await api.get(`/Lyria/${usuario}/PersonaEscolhida`);
+    const response = await api.get(`/Lyria/PersonaEscolhida`);
     return response.data;
   } catch (error) {
     console.error("Erro ao buscar persona:", error);
+    throw error;
+  }
+};
+
+export const getPersonas = async () => {
+  try {
+    const response = await api.get("/Lyria/personas");
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar personas:", error);
     throw error;
   }
 };
@@ -115,7 +125,7 @@ export const login = async (credentials) => {
 
 export const register = async (userData) => {
   try {
-    const response = await api.post("/Lyria/register", userData);
+    const response = await api.post("/Lyria/usuarios", userData);
     return response.data;
   } catch (error) {
     console.error("Erro ao registrar usuário:", error);
