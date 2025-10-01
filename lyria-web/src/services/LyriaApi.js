@@ -1,8 +1,8 @@
 import api from "./api";
 
-export const conversarAnonimo = async (pergunta, persona, signal) => {
+export const conversarAnonimo = async (pergunta, signal) => {
   try {
-    const response = await api.post("/conversar", { pergunta, persona }, { signal });
+    const response = await api.post("/Lyria/conversar", { pergunta }, { signal });
     return response.data;
   } catch (error) {
     if (error.name !== 'AbortError') {
@@ -12,38 +12,9 @@ export const conversarAnonimo = async (pergunta, persona, signal) => {
   }
 };
 
-export const gerarImagem = async (prompt) => {
-  try {
-    const response = await api.post("/gerar-imagem", { prompt }, {
-      responseType: 'blob', // Essencial para receber dados de imagem
-    });
-    // Cria uma URL local para o blob da imagem recebido
-    const imageUrl = URL.createObjectURL(response.data);
-    return imageUrl;
-  } catch (error) {
-    console.error("Erro ao gerar imagem:", error);
-
-    // Se a API retornar um erro em JSON (ex: prompt faltando), o erro virá como um blob.
-    // Precisamos convertê-lo de volta para texto para ler a mensagem.
-    if (error.response && error.response.data instanceof Blob) {
-      try {
-        const errorText = await error.response.data.text();
-        const errorJson = JSON.parse(errorText);
-        // Lança um novo erro com a mensagem da API para ser capturado pela interface
-        throw new Error(errorJson.erro || 'Ocorreu um erro ao gerar a imagem.');
-      } catch (e) {
-        // Caso a conversão falhe
-        throw new Error('Não foi possível interpretar o erro recebido do servidor.');
-      }
-    }
-    
-    throw error; // Lança o erro original se não for um blob
-  }
-};
-
 export const getUserProfile = async (userId) => {
   try {
-    const response = await api.get(`/profile/${userId}`);
+    const response = await api.get(`/Lyria/profile/${userId}`);
     return response.data;
   } catch (error) {
     console.error("Erro ao buscar perfil do usuário:", error);
@@ -53,7 +24,7 @@ export const getUserProfile = async (userId) => {
 
 export const updateUserProfile = async (userId, formData) => {
   try {
-    const response = await api.put(`/profile/${userId}`, formData, {
+    const response = await api.put(`/Lyria/profile/${userId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -67,7 +38,7 @@ export const updateUserProfile = async (userId, formData) => {
 
 export const deleteConversation = async (conversationId) => {
   try {
-    const response = await api.delete(`/conversas/${conversationId}`);
+    const response = await api.delete(`/Lyria/conversas/${conversationId}`);
     return response.data;
   } catch (error) {
     console.error("Erro ao deletar conversa:", error);
@@ -77,7 +48,7 @@ export const deleteConversation = async (conversationId) => {
 
 export const getConversations = async (username) => {
   try {
-    const response = await api.get(`/${username}/conversas`);
+    const response = await api.get(`/Lyria/${username}/conversas`);
     return response.data;
   } catch (error) {
     console.error("Erro ao buscar lista de conversas:", error);
@@ -87,7 +58,7 @@ export const getConversations = async (username) => {
 
 export const getMessagesForConversation = async (conversationId) => {
   try {
-    const response = await api.get(`/conversas/${conversationId}/mensagens`);
+    const response = await api.get(`/Lyria/conversas/${conversationId}/mensagens`);
     return response.data;
   } catch (error) {
     console.error("Erro ao carregar mensagens da conversa:", error);
@@ -97,7 +68,7 @@ export const getMessagesForConversation = async (conversationId) => {
 
 export const postMessage = async (username, conversationId, question, signal) => {
   try {
-    const response = await api.post(`/conversar-logado`, {
+    const response = await api.post(`/Lyria/${username}/conversar`, {
       pergunta: question,
       conversa_id: conversationId,
     }, { signal });
@@ -110,9 +81,9 @@ export const postMessage = async (username, conversationId, question, signal) =>
   }
 };
 
-export const setPersona = async (persona) => {
+export const setPersona = async (usuario, persona) => {
   try {
-    const response = await api.post(`/PersonaEscolhida`, {
+    const response = await api.post(`/Lyria/${usuario}/PersonaEscolhida`, {
       persona,
     });
     return response.data;
@@ -122,9 +93,9 @@ export const setPersona = async (persona) => {
   }
 };
 
-export const getPersona = async () => {
+export const getPersona = async (usuario) => {
   try {
-    const response = await api.get(`/PersonaEscolhida`);
+    const response = await api.get(`/Lyria/${usuario}/PersonaEscolhida`);
     return response.data;
   } catch (error) {
     console.error("Erro ao buscar persona:", error);
@@ -132,19 +103,9 @@ export const getPersona = async () => {
   }
 };
 
-export const getPersonas = async () => {
-  try {
-    const response = await api.get("/personas");
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao buscar personas:", error);
-    throw error;
-  }
-};
-
 export const login = async (credentials) => {
   try {
-    const response = await api.post("/login", credentials);
+    const response = await api.post("/Lyria/login", credentials);
     return response.data;
   } catch (error) {
     console.error("Erro ao fazer login:", error);
@@ -154,7 +115,7 @@ export const login = async (credentials) => {
 
 export const register = async (userData) => {
   try {
-    const response = await api.post("/usuarios", userData);
+    const response = await api.post("/Lyria/register", userData);
     return response.data;
   } catch (error) {
     console.error("Erro ao registrar usuário:", error);

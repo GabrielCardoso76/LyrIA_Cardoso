@@ -31,7 +31,6 @@ function Header() {
             Sobre
           </a>
           <Link to="/chat">Chat</Link>
-          <Link to="/gerar-imagem">Gerar Imagem</Link>
 
           {isAuthenticated ? (
             <div className="user-profile-section">
