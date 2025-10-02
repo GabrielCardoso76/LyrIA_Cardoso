@@ -115,7 +115,7 @@ export const login = async (credentials) => {
 
 export const register = async (userData) => {
   try {
-    const response = await api.post("/Lyria/register", userData);
+    const response = await api.post("/Lyria/usuarios", userData);
     return response.data;
   } catch (error) {
     console.error("Erro ao registrar usuário:", error);

@@ -15,6 +15,7 @@ from banco.banco import (
 from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
 from waitress import serve
 import os
+import hashlib
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -30,18 +31,20 @@ except Exception as e:
 @app.route('/Lyria/login', methods=['POST'])
 def login():
     data = request.get_json()
-    if not data or 'email' not in data:
-        return jsonify({"erro": "Campo 'email' é obrigatório"}), 400
+    if not data or 'email' not in data or 'senha' not in data:
+        return jsonify({"erro": "Campos 'email' e 'senha' são obrigatórios"}), 400
     
     email = data['email']
-    senha_hash = data.get('senha_hash')
+    senha = data.get('senha')
     
     try:
         usuario = procurarUsuarioPorEmail(email)
         if not usuario:
             return jsonify({"erro": "Usuário não encontrado"}), 404
         
-        # Se há senha_hash no banco, verificar
+        # Hash da senha para comparação
+        senha_hash = hashlib.sha256(senha.encode('utf-8')).hexdigest()
+
         if usuario.get('senha_hash') and senha_hash != usuario['senha_hash']:
             return jsonify({"erro": "Senha incorreta"}), 401
         
@@ -52,8 +55,12 @@ def login():
         
         return jsonify({
             "sucesso": "Login realizado com sucesso",
-            "usuario": usuario['nome'],
-            "persona": usuario.get('persona_escolhida')
+            "usuario": {
+                "id": usuario['id'],
+                "nome": usuario['nome'],
+                "email": usuario['email'],
+                "persona": usuario.get('persona_escolhida')
+            }
         })
         
     except Exception as e:
@@ -169,18 +176,19 @@ def set_persona_escolhida_logado():
 @app.route('/Lyria/usuarios', methods=['POST'])
 def criar_usuario_route():
     data = request.get_json()
-    if not data or 'nome' not in data or 'email' not in data:
-        return jsonify({"erro": "Campos 'nome' e 'email' são obrigatórios"}), 400
+    if not data or 'nome' not in data or 'email' not in data or 'senha' not in data:
+        return jsonify({"erro": "Campos 'nome', 'email' e 'senha' são obrigatórios"}), 400
 
     nome = data['nome']
     email = data['email']
-    persona = data.get('persona')
-    senha_hash = data.get('senha_hash')
+    senha = data['senha']
+    persona = data.get('persona', 'social')
     
     if persona not in ['professor', 'empresarial', 'social']:
         return jsonify({"erro": "Persona inválida. Use 'professor', 'empresarial' ou 'social'"}), 400
 
     try:
+        senha_hash = hashlib.sha256(senha.encode('utf-8')).hexdigest()
         usuario_id = criarUsuario(nome, email, persona, senha_hash)
         return jsonify({
             "sucesso": "Usuário criado com sucesso", 
