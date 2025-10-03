@@ -38,7 +38,7 @@ function LoginRegisterPage() {
       const response = await login({ email, senha });
       if (response.sucesso) {
         addToast("Login bem-sucedido! Redirecionando...", "success");
-        navigate("/");
+        navigate("/chat");
       } else {
         addToast(response.erro || "Erro ao fazer login.", "error");
       }
@@ -161,7 +161,7 @@ function LoginRegisterPage() {
         </div>
       </div>
     </div>
-  );
+  );  
 }
 
 export default LoginRegisterPage;

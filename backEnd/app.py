@@ -1,16 +1,24 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 from testeDaIa import perguntar_ollama, buscar_na_web, get_persona_texto
+from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename
 from banco.banco import (
     pegarPersonaEscolhida, 
     escolherApersona, 
     criarUsuario, 
     procurarUsuarioPorEmail, 
+    procurarUsuarioPorNome,
     pegarHistorico,
     salvarMensagem,
     criar_banco,
     carregar_conversas,
-    carregar_memorias
+    carregar_memorias,
+    procurarUsuarioPorId,
+    atualizarUsuario,
+    pegar_conversas_por_usuario,
+    carregar_mensagens_da_conversa,
+    deletar_conversa
 )
 from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
 from waitress import serve
@@ -84,81 +92,98 @@ def conversarSemConta():
     data = request.get_json()
     if not data or 'pergunta' not in data:
         return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
-    elif 'persona' not in data:
-        return jsonify({"erro": "Campo 'persona' é obrigatório"}), 400
+
     pergunta = data['pergunta']
-    persona = data['persona']
+    # Define 'social' como persona padrão para conversas anônimas
+    persona_tipo = data.get('persona', 'social')
     
     try:
         contexto_web = None
         if deve_buscar_na_web(pergunta):
             contexto_web = buscar_na_web(pergunta)
+        
+        persona = get_persona_texto(persona_tipo)
         resposta = perguntar_ollama(pergunta, None, None, persona, contexto_web)
         return jsonify({"resposta": resposta})
         
     except Exception as e:
         return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
 
-@app.route('/Lyria/conversar-logado', methods=['POST'])
-def conversar_logado():
-    usuario = verificar_login()
-    if not usuario:
-        return jsonify({"erro": "Usuário não está logado"}), 401
-    
+@app.route('/Lyria/<username>/conversar', methods=['POST'])
+def post_message(username):
     data = request.get_json()
     if not data or 'pergunta' not in data:
         return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
+
     pergunta = data['pergunta']
-    persona_tipo = pegarPersonaEscolhida(usuario)
+    conversa_id = data.get('conversa_id') 
+
+    usuario = procurarUsuarioPorNome(username)
+    if not usuario:
+        return jsonify({"erro": "Usuário não encontrado"}), 404
+
+    persona_tipo = usuario.get('persona_escolhida')
     if not persona_tipo:
         return jsonify({"erro": "Usuário não tem persona definida"}), 400
     
     try:
-        conversas = carregar_conversas(usuario)
-        memorias = carregar_memorias(usuario)
+        conversas = carregar_conversas(username) 
+        memorias = carregar_memorias(username)
         contexto_web = None
         if deve_buscar_na_web(pergunta):
             contexto_web = buscar_na_web(pergunta)
+        
         persona = get_persona_texto(persona_tipo)
         resposta = perguntar_ollama(pergunta, conversas, memorias, persona, contexto_web)
-        salvarMensagem(usuario, pergunta, resposta, modelo_usado="hf", tokens=None)
-        return jsonify({"resposta": resposta})
+        
+        resultado = salvarMensagem(usuario['id'], pergunta, resposta, conversa_id, modelo_usado="hf", tokens=None)
+        
+        return jsonify({"resposta": resposta, "conversa_id": resultado["conversa_id"]})
         
     except Exception as e:
         return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
 
-@app.route('/Lyria/conversas', methods=['GET'])
-def get_conversas_logado():
-    usuario = verificar_login()
+@app.route('/Lyria/<username>/conversas', methods=['GET'])
+def get_user_conversations(username):
+    usuario = procurarUsuarioPorNome(username)
     if not usuario:
-        return jsonify({"erro": "Usuário não está logado"}), 401
-    
+        return jsonify({"erro": "Usuário não encontrado"}), 404
+        
     try:
-        conversas = carregar_conversas(usuario)
-        return jsonify({"conversas": conversas})
+        conversas = pegar_conversas_por_usuario(usuario['id'])
+        return jsonify(conversas)
     except Exception as e:
         return jsonify({"erro": f"Erro ao buscar conversas: {str(e)}"}), 500
 
-@app.route('/Lyria/PersonaEscolhida', methods=['GET'])
-def get_persona_escolhida_logado():
-    usuario = verificar_login()
-    if not usuario:
-        return jsonify({"erro": "Usuário não está logado"}), 401
-    
+@app.route('/Lyria/conversas/<int:conversation_id>/mensagens', methods=['GET'])
+def get_messages_for_conversation(conversation_id):
+    try:
+        mensagens = carregar_mensagens_da_conversa(conversation_id)
+        return jsonify(mensagens)
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao carregar mensagens: {str(e)}"}), 500
+
+@app.route('/Lyria/conversas/<int:conversation_id>', methods=['DELETE'])
+def delete_conversation_route(conversation_id):
+    try:
+        deletar_conversa(conversation_id)
+        return jsonify({"sucesso": "Conversa deletada com sucesso"})
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao deletar conversa: {str(e)}"}), 500
+
+@app.route('/Lyria/<usuario>/PersonaEscolhida', methods=['GET'])
+def get_persona_escolhida(usuario):
     try:
         persona = pegarPersonaEscolhida(usuario)
         if persona:
             return jsonify({"persona": persona})
-        return jsonify({"erro": "Usuário não encontrado"}), 404
+        return jsonify({"erro": "Usuário ou persona não encontrados"}), 404
     except Exception as e:
         return jsonify({"erro": f"Erro ao buscar persona: {str(e)}"}), 500
 
-@app.route('/Lyria/PersonaEscolhida', methods=['POST'])
-def set_persona_escolhida_logado():
-    usuario = verificar_login()
-    if not usuario:
-        return jsonify({"erro": "Usuário não está logado"}), 401
-    
+
+@app.route('/Lyria/<usuario>/PersonaEscolhida', methods=['POST'])
+def set_persona_escolhida(usuario):
     data = request.get_json()
     if not data or 'persona' not in data:
         return jsonify({"erro": "Campo 'persona' é obrigatório"}), 400
@@ -168,6 +193,10 @@ def set_persona_escolhida_logado():
         return jsonify({"erro": "Persona inválida. Use 'professor', 'empresarial' ou 'social'"}), 400
 
     try:
+        user_data = procurarUsuarioPorNome(usuario)
+        if not user_data:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+            
         escolherApersona(persona, usuario)
         return jsonify({"sucesso": "Persona atualizada com sucesso"})
     except Exception as e:
@@ -249,7 +278,7 @@ def listar_personas():
         - Usar linguagem simples e direta
         - Confirmar compreensão antes de avançar para conceitos mais complexos
 
-        ESTILO DE COMUNICAÇÃO:
+        ESTILO DE COMUNicação:
         - Tom didático, acessível e objetivo
         - Respostas curtas e bem estruturadas
         - Exemplos concretos
@@ -283,7 +312,7 @@ def listar_personas():
         - Ser objetiva e evitar rodeios
         - Foco em eficiência, produtividade e ação imediata
 
-        ESTILO DE COMUNICAÇÃO:
+        ESTILO DE COMUNicação:
         - Linguagem profissional, direta e objetiva
         - Respostas concisas e estruturadas
         - Terminologia empresarial apropriada
@@ -317,7 +346,7 @@ def listar_personas():
         - Ser direta e empática, evitando excesso de explicações
         - Promover reflexão prática e crescimento pessoal
 
-        ESTILO DE COMUNICAÇÃO:
+        ESTILO DE COMUNicação:
         - Linguagem natural, acolhedora e objetiva
         - Respostas claras e sem enrolação
         - Tom compreensivo, mas honesto
@@ -333,6 +362,54 @@ def listar_personas():
         """
     }
     return jsonify({"personas": personas})
+
+# Rota para buscar perfil do usuário
+@app.route('/Lyria/profile/<int:user_id>', methods=['GET'])
+def get_user_profile(user_id):
+    try:
+        usuario = procurarUsuarioPorId(user_id)
+        if usuario:
+            return jsonify(usuario)
+        return jsonify({"erro": "Usuário não encontrado"}), 404
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao buscar perfil: {str(e)}"}), 500
+
+# Configuração da pasta de upload
+UPLOAD_FOLDER = 'backEnd/static/uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Rota para servir arquivos de upload
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Rota para atualizar perfil do usuário
+@app.route('/Lyria/profile/<int:user_id>', methods=['PUT'])
+def update_user_profile(user_id):
+    foto_perfil_url = None
+    if 'foto_perfil' in request.files:
+        file = request.files['foto_perfil']
+        if file and file.filename != '':
+            filename = secure_filename(file.filename)
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            foto_perfil_url = f'/uploads/{filename}'
+
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+    senha = request.form.get('senha')
+    
+    senha_hash = None
+    if senha:
+        senha_hash = hashlib.sha256(senha.encode('utf-8')).hexdigest()
+
+    try:
+        atualizarUsuario(user_id, nome, email, senha_hash, foto_perfil_url)
+        updated_user = procurarUsuarioPorId(user_id)
+        return jsonify({"sucesso": "Perfil atualizado com sucesso", "usuario": updated_user})
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao atualizar perfil: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  
