@@ -7,9 +7,10 @@ from testeDaIa import perguntar_ollama, buscar_na_web, get_persona_texto
 from banco.banco import (
     criar_banco, criarUsuario, procurarUsuarioPorEmail,
     pegarHistorico, salvarMensagem, carregar_conversas, carregar_memorias,
-    pegarPersonaEscolhida, escolherApersona
+    pegarPersonaEscolhida, escolherApersona, procurarUsuarioPorId, atualizarUsuario
 )
 from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
@@ -67,7 +68,68 @@ def verificar_login():
 def validar_persona(persona):
     return persona in ['professor', 'empresarial', 'social']
 
+# ---------------- CONFIGURAÇÃO DE UPLOAD ----------------
+UPLOAD_FOLDER = 'uploads/profile_pics'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 # ---------------- ROTAS ----------------
+@app.route('/Lyria/profile/<int:usuario_id>', methods=['GET'])
+def get_profile(usuario_id):
+    # verificar_login() # Apenas para depuração
+
+    # Simplificação da verificação de login: um usuário só pode ver o seu próprio perfil
+    if 'usuario_id' not in session or session['usuario_id'] != usuario_id:
+        return jsonify({"erro": "Acesso não autorizado"}), 403
+
+    try:
+        user = procurarUsuarioPorId(usuario_id)
+        if user:
+            return jsonify(user)
+        else:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+    except Exception as e:
+        print(f"❌ Erro em get_profile: {e}")
+        return jsonify({"erro": str(e)}), 500
+
+@app.route('/Lyria/profile/<int:usuario_id>', methods=['PUT'])
+def update_profile(usuario_id):
+    # verificar_login()
+
+    if 'usuario_id' not in session or session['usuario_id'] != usuario_id:
+        return jsonify({"erro": "Acesso não autorizado"}), 403
+
+    # Os dados que não são arquivos vêm em 'request.form'
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+
+    foto_url = None
+    if 'foto_perfil' in request.files:
+        file = request.files['foto_perfil']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            foto_url = f"/{filepath}"
+
+    try:
+        updated_user = atualizarUsuario(usuario_id, nome, email, foto_url)
+        if updated_user:
+            return jsonify({"sucesso": "Perfil atualizado com sucesso", "usuario": updated_user})
+        else:
+            # Isso pode acontecer se o usuário com o ID não for encontrado
+            return jsonify({"erro": "Falha ao atualizar o perfil. Usuário não encontrado."}), 404
+    except Exception as e:
+        print(f"❌ Erro em update_profile: {e}")
+        return jsonify({"erro": str(e)}), 500
+
 @app.route('/Lyria/login', methods=['POST'])
 def login():
     print(f"   Origin: {request.headers.get('Origin')}")
@@ -326,6 +388,13 @@ def check_session():
         "mensagem": "Nenhuma sessão ativa"
     }), 401
 
+
+# ---------------- ROTA PARA SERVIR ARQUIVOS ----------------
+from flask import send_from_directory
+
+@app.route('/uploads/profile_pics/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ---------------- INÍCIO DO SERVIDOR ----------------
 if __name__ == "__main__":

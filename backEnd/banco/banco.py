@@ -79,6 +79,15 @@ def criar_banco():
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
     );
     """)
+    # Adicionar a coluna de foto de perfil se ela não existir
+    cursor.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='usuarios' AND column_name='foto_perfil_url') THEN
+            ALTER TABLE usuarios ADD COLUMN foto_perfil_url TEXT;
+        END IF;
+    END $$;
+    """)
     conn.commit()
     conn.close()
 
@@ -117,6 +126,46 @@ def procurarUsuarioPorEmail(usuarioEmail):
     result = cursor.fetchone()
     conn.close()
     return dict(result) if result else None
+
+def procurarUsuarioPorId(usuario_id):
+    conn = psycopg2.connect(DB_URL)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor.execute("SELECT id, nome, email, foto_perfil_url FROM usuarios WHERE id = %s", (usuario_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return dict(result) if result else None
+
+def atualizarUsuario(usuario_id, nome=None, email=None, foto_perfil_url=None):
+    conn = psycopg2.connect(DB_URL)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    updates = []
+    params = []
+
+    if nome is not None:
+        updates.append("nome = %s")
+        params.append(nome)
+    if email is not None:
+        updates.append("email = %s")
+        params.append(email)
+    if foto_perfil_url is not None:
+        updates.append("foto_perfil_url = %s")
+        params.append(foto_perfil_url)
+
+    if not updates:
+        return None
+
+    params.append(usuario_id)
+
+    query = "UPDATE usuarios SET " + ", ".join(updates) + " WHERE id = %s RETURNING id, nome, email, foto_perfil_url"
+
+    cursor.execute(query, tuple(params))
+    updated_user = cursor.fetchone()
+
+    conn.commit()
+    conn.close()
+
+    return dict(updated_user) if updated_user else None
 
 def carregar_conversas(usuario_email, limite=12):
     conn = psycopg2.connect(DB_URL)
