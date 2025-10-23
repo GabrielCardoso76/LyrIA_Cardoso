@@ -1,12 +1,12 @@
-import psycopg2
-import psycopg2.extras
+import psycopg
+from psycopg.rows import dict_row
 from datetime import datetime
 import os
 
 DB_URL = os.getenv("BANCO_API")
 
 def criar_banco():
-    conn = psycopg2.connect(DB_URL)
+    conn = psycopg.connect(DB_URL)
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -92,22 +92,22 @@ def criar_banco():
     conn.close()
 
 def pegarPersonaEscolhida(usuario):
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg.connect(DB_URL)
+    cursor = conn.cursor(row_factory=dict_row)
     cursor.execute("SELECT persona_escolhida FROM usuarios WHERE email = %s", (usuario,))
     result = cursor.fetchone()
     conn.close()
     return result["persona_escolhida"] if result else None
 
 def escolherApersona(persona, usuario):
-    conn = psycopg2.connect(DB_URL)
+    conn = psycopg.connect(DB_URL)
     cursor = conn.cursor()
     cursor.execute("UPDATE usuarios SET persona_escolhida = %s WHERE email = %s", (persona, usuario))
     conn.commit()
     conn.close()
 
 def criarUsuario(nome, email, persona, senha_hash=None):
-    conn = psycopg2.connect(DB_URL)
+    conn = psycopg.connect(DB_URL)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO usuarios (nome, email, persona_escolhida, senha_hash, criado_em, ultimo_acesso)
@@ -120,24 +120,24 @@ def criarUsuario(nome, email, persona, senha_hash=None):
     return usuario_id
 
 def procurarUsuarioPorEmail(usuarioEmail):
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg.connect(DB_URL)
+    cursor = conn.cursor(row_factory=dict_row)
     cursor.execute("SELECT * FROM usuarios WHERE email = %s", (usuarioEmail,))
     result = cursor.fetchone()
     conn.close()
     return dict(result) if result else None
 
 def procurarUsuarioPorId(usuario_id):
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg.connect(DB_URL)
+    cursor = conn.cursor(row_factory=dict_row)
     cursor.execute("SELECT id, nome, email, foto_perfil_url FROM usuarios WHERE id = %s", (usuario_id,))
     result = cursor.fetchone()
     conn.close()
     return dict(result) if result else None
 
 def atualizarUsuario(usuario_id, nome=None, email=None, foto_perfil_url=None):
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg.connect(DB_URL)
+    cursor = conn.cursor(row_factory=dict_row)
 
     updates = []
     params = []
@@ -168,8 +168,8 @@ def atualizarUsuario(usuario_id, nome=None, email=None, foto_perfil_url=None):
     return dict(updated_user) if updated_user else None
 
 def carregar_conversas(usuario_email, limite=12):
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg.connect(DB_URL)
+    cursor = conn.cursor(row_factory=dict_row)
     cursor.execute("""
         SELECT ur.conteudo AS pergunta, ar.conteudo AS resposta
         FROM mensagens m
@@ -177,7 +177,7 @@ def carregar_conversas(usuario_email, limite=12):
         JOIN ai_responses ar ON m.response_id = ar.id
         JOIN conversas c ON m.conversa_id = c.id
         JOIN usuarios u ON c.usuario_id = u.id
-        WHERE u.email = %s  -- ✅ CORRIGIDO
+        WHERE u.email = %s
         ORDER BY m.criado_em ASC
         LIMIT %s
     """, (usuario_email, limite))
@@ -190,9 +190,9 @@ def carregar_conversas(usuario_email, limite=12):
 
 def carregar_memorias(usuario_email, limite=20):
     try:
-        conn = psycopg2.connect(DB_URL)
+        conn = psycopg.connect(DB_URL)
         conn.autocommit = True
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor = conn.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT ur.conteudo AS usuario_disse,
                 ar.conteudo AS ia_respondeu,
@@ -202,7 +202,7 @@ def carregar_memorias(usuario_email, limite=20):
             JOIN ai_responses ar ON m.response_id = ar.id
             JOIN conversas c ON m.conversa_id = c.id
             JOIN usuarios u ON c.usuario_id = u.id
-            WHERE u.email = %s  -- ✅ CORRIGIDO
+            WHERE u.email = %s
             ORDER BY m.criado_em DESC
             LIMIT %s
         """, (usuario_email, limite))
@@ -214,14 +214,14 @@ def carregar_memorias(usuario_email, limite=20):
             memorias.append(f"IA: {row['ia_respondeu']}")
         return list(reversed(memorias)) if memorias else []
     except Exception as e:
-        print(f"⚠️ Erro ao carregar memórias: {e}")
+        print(f" Erro ao carregar memórias: {e}")
         return []
 
 
 def pegarHistorico(usuario_email, limite=3):
     try:
-        conn = psycopg2.connect(DB_URL)
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        conn = psycopg.connect(DB_URL)
+        cursor = conn.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT m.id AS id_historico,
                 ur.conteudo AS pergunta,
@@ -232,7 +232,7 @@ def pegarHistorico(usuario_email, limite=3):
             JOIN ai_responses ar ON m.response_id = ar.id
             JOIN conversas c ON m.conversa_id = c.id
             JOIN usuarios u ON c.usuario_id = u.id
-            WHERE u.email = %s  -- ✅ CORRIGIDO
+            WHERE u.email = %s
             ORDER BY m.criado_em DESC
             LIMIT %s
         """, (usuario_email, limite))
@@ -240,11 +240,11 @@ def pegarHistorico(usuario_email, limite=3):
         conn.close()
         return [dict(row) for row in results]
     except Exception as e:
-        print(f"⚠️ Erro ao carregar histórico: {e}")
+        print(f" Erro ao carregar histórico: {e}")
         return []
     
 def salvarMensagem(usuario_email, pergunta, resposta, modelo_usado=None, tokens=None):
-    conn = psycopg2.connect(DB_URL)
+    conn = psycopg.connect(DB_URL)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -305,4 +305,4 @@ def salvarMensagem(usuario_email, pergunta, resposta, modelo_usado=None, tokens=
 
     conn.commit()
     conn.close()
-    print(f"✅ Mensagem salva para usuário {usuario_email}")
+    print(f" Mensagem salva para usuário {usuario_email}")

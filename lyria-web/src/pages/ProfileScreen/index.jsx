@@ -40,6 +40,10 @@ const ProfileScreen = () => {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    if (!user || !user.id) {
+      addToast('Usuário não identificado. Por favor, faça login novamente.', 'error');
+      return;
+    }
     setIsLoading(true);
 
     const formData = new FormData();
@@ -72,6 +76,10 @@ const ProfileScreen = () => {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
+    if (!user || !user.id) {
+      addToast('Usuário não identificado. Por favor, faça login novamente.', 'error');
+      return;
+    }
     if (!currentPassword || !newPassword) {
       addToast('Por favor, preencha a senha atual e a nova senha.', 'error');
       return;
