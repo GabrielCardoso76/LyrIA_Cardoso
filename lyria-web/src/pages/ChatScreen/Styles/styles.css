@@ -4,9 +4,8 @@
   height: 100%;
   display: flex;
   justify-content: center;
-  align-items: flex-end;
+  align-items: center;
   color: #f0f0f0;
-  padding-bottom: 1rem;
 }
 
 .galaxy-background {
@@ -21,7 +20,7 @@
 .galaxy-chat-area {
   width: 100%;
   max-width: 1200px;
-  height: 98vh;
+  height: 90vh;
   max-height: 900px;
   display: flex;
   flex-direction: column;
@@ -190,8 +189,10 @@
 
 .message-actions {
   position: absolute;
-  bottom: 5px;
-  right: -90px;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 0.5rem;
   display: flex;
   gap: 0.5rem;
   opacity: 0;

@@ -137,16 +137,21 @@ function ChatContent() {
   };
 
   const handleSpeakMessage = (messageId, text) => {
-    if (synthesizerRef.current) {
-      synthesizerRef.current.close();
-      synthesizerRef.current = null;
-      // Se a mensagem clicada era a que estava tocando, apenas paramos.
-      if (currentlySpeakingId === messageId) {
-        setCurrentlySpeakingId(null);
-        return;
-      }
+    // Se algo já está falando e o usuário clica em um botão diferente, exibe um alerta.
+    if (currentlySpeakingId && currentlySpeakingId !== messageId) {
+      addToast("Por favor, pare a fala atual antes de iniciar outra.", "info");
+      return;
     }
 
+    // Se o usuário clica no botão da mensagem que já está tocando, para a fala.
+    if (synthesizerRef.current && currentlySpeakingId === messageId) {
+      synthesizerRef.current.close();
+      synthesizerRef.current = null;
+      setCurrentlySpeakingId(null);
+      return;
+    }
+
+    // Inicia a nova fala
     const plainText = stripMarkdown(text);
     const synthesizer = new SpeechSynthesizer(speechConfig);
     synthesizerRef.current = synthesizer;
@@ -201,6 +206,9 @@ function ChatContent() {
 
       const botMessage = { id: crypto.randomUUID(), sender: "bot", text: response.resposta, animate: true };
       setMessages((prev) => [...prev, botMessage]);
+      if (isSpeechEnabled) {
+        handleSpeakMessage(botMessage.id, botMessage.text);
+      }
     } catch (error) {
       if (error.name !== "AbortError") {
         const errorMessage = { id: crypto.randomUUID(), sender: "bot", text: "Desculpe, ocorreu um erro." };
@@ -330,6 +338,7 @@ function ChatContent() {
     if (!nextState && synthesizerRef.current) {
       synthesizerRef.current.close();
       synthesizerRef.current = null;
+      setCurrentlySpeakingId(null);
     }
   };
 
