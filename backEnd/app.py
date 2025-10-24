@@ -13,14 +13,14 @@ from classificadorDaWeb.classificador_busca_web import deve_buscar_na_web
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY')
+app.secret_key = os.environ.get('SECRET_KEY', 'uma-chave-secreta-padrao-para-desenvolvimento')
 
 IS_PRODUCTION = os.environ.get('RENDER', False)
 
 app.config.update(
     SESSION_TYPE='filesystem',  
     SESSION_COOKIE_NAME='lyria_session',
-    SESSION_COOKIE_SAMESITE='None' if IS_PRODUCTION else 'Lax',
+    SESSION_COOKIE_SAMESITE='None',
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=IS_PRODUCTION,
     SESSION_COOKIE_PATH='/',
