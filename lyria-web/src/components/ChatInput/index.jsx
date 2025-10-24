@@ -1,6 +1,7 @@
 import { FiSend, FiPaperclip, FiMic } from "react-icons/fi";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "../../context/ToastContext";
+import useOutsideClick from "../../hooks/useOutsideClick";
 
 const ChatInput = ({
   input,
@@ -12,7 +13,14 @@ const ChatInput = ({
 }) => {
   const [isAttachmentMenuVisible, setAttachmentMenuVisible] = useState(false);
   const textareaRef = useRef(null);
+  const attachmentRef = useRef(null);
   const { addToast } = useToast();
+
+  useOutsideClick(attachmentRef, () => {
+    if (isAttachmentMenuVisible) {
+      setAttachmentMenuVisible(false);
+    }
+  });
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -31,7 +39,7 @@ const ChatInput = ({
 
   return (
     <footer className="galaxy-chat-input-container">
-      <div className="attachment-container">
+      <div className="attachment-container" ref={attachmentRef}>
         {isAttachmentMenuVisible && (
           <div className="attachment-menu">
             <button

@@ -25,6 +25,7 @@ import LoginPrompt from "../../components/LoginPrompt";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import HistoryPanel from "../../components/HistoryPanel";
 import ChatHeader from "../../components/ChatHeader";
+import SettingsModal from "../../components/SettingsModal";
 import MessageList from "../../components/MessageList";
 import ChatInput from "../../components/ChatInput";
 import PromptSuggestions from "../../components/PromptSuggestions";
@@ -60,6 +61,7 @@ function ChatContent() {
   const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
   const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [isSettingsModalVisible, setSettingsModalVisible] = useState(false);
   const [chatToDelete, setChatToDelete] = useState(null);
   const [personas, setPersonas] = useState({});
   const [selectedPersona, setSelectedPersona] = useState("professor");
@@ -302,6 +304,15 @@ function ChatContent() {
     }
   };
 
+  const handleToggleSpeech = () => {
+    const nextState = !isSpeechEnabled;
+    setIsSpeechEnabled(nextState);
+    if (!nextState && synthesizerRef.current) {
+      synthesizerRef.current.close();
+      synthesizerRef.current = null;
+    }
+  };
+
   return (
     <>
       {isLoginPromptVisible && <LoginPrompt onDismiss={() => setLoginPromptVisible(false)} showContinueAsGuest={false} />}
@@ -312,6 +323,16 @@ function ChatContent() {
         title="Confirmar Exclusão"
         message="Você tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita."
       />
+      <SettingsModal
+        isOpen={isSettingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+        personas={personas}
+        selectedPersona={selectedPersona}
+        onPersonaChange={handlePersonaChange}
+        availableVoices={availableVoices}
+        selectedVoice={selectedVoice}
+        onVoiceChange={handleVoiceChange}
+      />
       <HistoryPanel
         isVisible={isHistoryVisible}
         onClose={() => setHistoryVisible(false)}
@@ -322,21 +343,16 @@ function ChatContent() {
       <main className={`galaxy-chat-area ${isHistoryVisible ? "history-open" : ""}`}>
         <ChatHeader
           onHistoryClick={handleHistoryClick}
-          personas={personas}
-          selectedPersona={selectedPersona}
-          onPersonaChange={handlePersonaChange}
-          availableVoices={availableVoices}
-          selectedVoice={selectedVoice}
-          onVoiceChange={handleVoiceChange}
+          onSettingsClick={() => setSettingsModalVisible(true)}
           isSpeechEnabled={isSpeechEnabled}
-          onToggleSpeech={() => setIsSpeechEnabled((p) => !p)}
+          onToggleSpeech={handleToggleSpeech}
           onNewChatClick={handleNewChatClick}
         />
         <div className={`galaxy-chat-body ${chatBodyAnimationClass}`}>
           {messages.length === 0 ? (
             <PromptSuggestions onSuggestionClick={handleSend} />
           ) : (
-            <MessageList messages={messages} isBotTyping={isBotTyping} />
+            <MessageList user={user} messages={messages} isBotTyping={isBotTyping} />
           )}
         </div>
         <ChatInput

@@ -20,7 +20,7 @@
 .galaxy-chat-area {
   width: 100%;
   max-width: 1200px;
-  height: 90vh;
+  height: 95vh;
   max-height: 900px;
   display: flex;
   flex-direction: column;
@@ -59,10 +59,19 @@
   flex-shrink: 0;
 }
 
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .header-title-link {
   text-decoration: none;
   color: inherit;
   transition: transform 0.2s ease-in-out;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .header-title-link:hover {

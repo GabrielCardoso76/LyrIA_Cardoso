@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import './Styles/styles.css';
 import { Link, useNavigate } from 'react-router-dom';
+import useOutsideClick from '../../hooks/useOutsideClick';
 import { useAuth } from '../../context/AuthContext';
 import LoginPrompt from '../../components/LoginPrompt';
 import { baseURL } from '../../services/api';
@@ -16,6 +17,13 @@ function InitialScreen() {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useOutsideClick(dropdownRef, () => {
+    if (dropdownVisible) {
+      setDropdownVisible(false);
+    }
+  });
 
   const contactLinks = [
     { icon: <FiGithub />, label: "LyrIA-Project", href: "https://github.com/RaissaBernardo/Lyria", targetBlank: true },
@@ -86,36 +94,36 @@ function InitialScreen() {
         </Link>
 
         <nav className="main-nav">
-          {isAuthenticated ? (
-            <div className="user-profile-section">
-              <div
-                className="user-indicator"
-                onClick={() => setDropdownVisible(!dropdownVisible)}
-              >
-                {user?.foto_perfil_url ? (
-                  <img
-                    src={`${baseURL}${user.foto_perfil_url}`}
-                    alt="Foto de perfil"
-                    className="user-profile-pic"
-                  />
-                ) : (
-                  user?.nome?.charAt(0).toUpperCase()
+          <div className="nav-actions">
+            <button onClick={toggleContactModal} className="nav-button">Contato</button>
+            {isAuthenticated ? (
+              <div className="user-profile-section" ref={dropdownRef}>
+                <div
+                  className="user-indicator"
+                  onClick={() => setDropdownVisible(!dropdownVisible)}
+                >
+                  {user?.foto_perfil_url ? (
+                    <img
+                      src={`${baseURL}${user.foto_perfil_url}`}
+                      alt="Foto de perfil"
+                      className="user-profile-pic"
+                    />
+                  ) : (
+                    user?.nome?.charAt(0).toUpperCase()
+                  )}
+                </div>
+
+                {dropdownVisible && (
+                  <div className="user-dropdown-initial">
+                    <Link to="/profile" className="dropdown-link">Ver Perfil</Link>
+                    <button onClick={handleLogout}>Sair</button>
+                  </div>
                 )}
               </div>
-
-              {dropdownVisible && (
-                <div className="user-dropdown-initial">
-                  <Link to="/profile" className="dropdown-link">Ver Perfil</Link>
-                  <button onClick={handleLogout}>Sair</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="nav-actions">
+            ) : (
               <Link to={'/RegistrationAndLogin'} className="nav-button">Entrar</Link>
-              <button onClick={toggleContactModal} className="nav-button">Contato</button>
-            </div>
-          )}
+            )}
+          </div>
         </nav>
       </header>
 
