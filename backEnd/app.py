@@ -22,7 +22,7 @@ app.config.update(
     SESSION_COOKIE_NAME='lyria_session',
     SESSION_COOKIE_SAMESITE='None',
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=IS_PRODUCTION,
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_PATH='/',
     SESSION_COOKIE_DOMAIN=None,  
     PERMANENT_SESSION_LIFETIME=604800
@@ -31,6 +31,7 @@ app.config.update(
 Session(app)
 
 allowed_origins = [
+    "https://localhost:5173",
     "http://localhost:5173",
     "http://localhost:3000",
     "http://10.110.12.20:5173"
