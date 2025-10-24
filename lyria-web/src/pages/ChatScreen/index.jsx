@@ -67,6 +67,7 @@ function ChatContent() {
   const [selectedPersona, setSelectedPersona] = useState("professor");
   const [currentlySpeakingId, setCurrentlySpeakingId] = useState(null);
   const synthesizerRef = useRef(null); // Ref para controlar a síntese de voz
+  const recognizerRef = useRef(null); // Ref para controlar o reconhecimento de voz
 
   useEffect(() => {
     const fetchPersonas = async () => {
@@ -212,11 +213,21 @@ function ChatContent() {
   };
 
   const handleMicClick = () => {
-    if (isListening) return;
+    if (isListening && recognizerRef.current) {
+      recognizerRef.current.close();
+      recognizerRef.current = null;
+      setIsListening(false);
+      setInput("");
+      return;
+    }
+
     const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
     const recognizer = new SpeechRecognizer(speechConfig, audioConfig);
+    recognizerRef.current = recognizer;
+
     setIsListening(true);
     setInput("Ouvindo... pode falar.");
+
     recognizer.recognizeOnceAsync(
       (result) => {
         if (result.reason === ResultReason.RecognizedSpeech) {
@@ -226,11 +237,13 @@ function ChatContent() {
           setTimeout(() => setInput(""), 2000);
         }
         recognizer.close();
+        recognizerRef.current = null;
         setIsListening(false);
       },
       () => {
         setInput("Erro ao acessar o microfone.");
         recognizer.close();
+        recognizerRef.current = null;
         setIsListening(false);
         setTimeout(() => setInput(""), 2000);
       }

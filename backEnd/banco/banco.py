@@ -6,6 +6,10 @@ import os
 DB_URL = os.getenv("BANCO_API")
 
 def criar_banco():
+    if not DB_URL:
+        print("⚠️  Atenção: A variável de ambiente BANCO_API não está definida. Pulando a criação/verificação de tabelas.")
+        return
+
     conn = psycopg.connect(DB_URL)
     cursor = conn.cursor()
     cursor.execute("""
