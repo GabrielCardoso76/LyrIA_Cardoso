@@ -30,6 +30,9 @@ function Header() {
           <a href="#nossa-historia" onClick={(e) => handleScrollTo(e, 'nossa-historia')}>
             Sobre
           </a>
+          <a href="#contato" onClick={(e) => handleScrollTo(e, 'contato')}>
+            Contato
+          </a>
           <Link to="/chat">Chat</Link>
 
           {isAuthenticated ? (

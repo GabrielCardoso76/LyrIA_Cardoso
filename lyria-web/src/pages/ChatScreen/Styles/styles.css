@@ -1,8 +1,7 @@
 .galaxy-chat-container {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -545,22 +544,16 @@
 }
 
 /* Animações para o corpo do chat (Novo Chat) */
-@keyframes chat-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes chat-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+.galaxy-chat-body {
+  transition: opacity 0.5s ease-in-out;
 }
 
 .galaxy-chat-body.fade-in {
-  animation: chat-fade-in 0.5s ease-in forwards;
+  opacity: 1;
 }
 
 .galaxy-chat-body.fade-out {
-  animation: chat-fade-out 0.5s ease-out forwards;
+  opacity: 0;
 }
 
 

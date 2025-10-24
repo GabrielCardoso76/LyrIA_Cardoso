@@ -138,7 +138,7 @@ def testar_hf_api():
 import requests
 import os
 # --- CHAMAR GROQ API ---
-def chamar_groq_api(prompt, max_tokens=400):
+def chamar_groq_api(prompt, max_tokens=1024):
     groq_key = os.getenv("GROQ_API_KEY")
     if not groq_key:
         print("❌ GROQ: Chave não encontrada")
@@ -181,7 +181,7 @@ def chamar_groq_api(prompt, max_tokens=400):
 
 
 # --- CHAMAR HUGGING FACE INFERENCE API ---
-def chamar_hf_inference(prompt, max_new_tokens=400, temperature=0.3):
+def chamar_hf_inference(prompt, max_new_tokens=1024, temperature=0.3):
     hf_key = os.getenv("HUGGING_FACE_API_KEY")
     if not hf_key:
         print("❌ HF: Chave não encontrada, usando Groq...")
@@ -382,7 +382,7 @@ def perguntar_ollama(pergunta, conversas, memorias, persona, contexto_web=None):
     
     if conversas and len(conversas) > 0:
         prompt_parts.append("\n\n=== HISTÓRICO DA CONVERSA ===")
-        ultimas_conversas = conversas[-10:] if len(conversas) > 10 else conversas
+        ultimas_conversas = conversas[-20:] if len(conversas) > 20 else conversas
         
         for i, conv in enumerate(ultimas_conversas, 1):
             pergunta_anterior = conv.get('pergunta', '')[:300] 
@@ -397,7 +397,7 @@ def perguntar_ollama(pergunta, conversas, memorias, persona, contexto_web=None):
     
     if memorias and len(memorias) > 0:
         prompt_parts.append("\n=== MEMÓRIAS RELEVANTES ===")
-        ultimas_memorias = memorias[-10:] if len(memorias) > 10 else memorias
+        ultimas_memorias = memorias[-20:] if len(memorias) > 20 else memorias
         
         for memoria in ultimas_memorias:
             if len(memoria) > 10:  

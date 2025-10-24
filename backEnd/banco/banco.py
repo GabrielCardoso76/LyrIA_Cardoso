@@ -171,7 +171,7 @@ def carregar_conversas(usuario_email, limite=12):
     conn = psycopg.connect(DB_URL)
     cursor = conn.cursor(row_factory=dict_row)
     cursor.execute("""
-        SELECT ur.conteudo AS pergunta, ar.conteudo AS resposta
+        SELECT c.id AS id, ur.conteudo AS pergunta, ar.conteudo AS resposta
         FROM mensagens m
         JOIN user_requests ur ON m.request_id = ur.id
         JOIN ai_responses ar ON m.response_id = ar.id

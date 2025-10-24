@@ -63,6 +63,7 @@ function ChatContent() {
   const [chatToDelete, setChatToDelete] = useState(null);
   const [personas, setPersonas] = useState({});
   const [selectedPersona, setSelectedPersona] = useState("professor");
+  const synthesizerRef = useRef(null); // Ref para controlar a síntese de voz
 
   useEffect(() => {
     const fetchPersonas = async () => {
@@ -97,17 +98,11 @@ function ChatContent() {
     if (isAuthenticated && user) {
       try {
         const response = await getConversations();
-        
-        // ===== LÓGICA PRINCIPAL PARA GERAR IDs E TÍTULOS =====
-        const conversationsWithIds = (response.conversas || []).map((convo, index) => ({
+        const conversationsWithTitles = (response.conversas || []).map(convo => ({
           ...convo,
-          id: index, // Usa o índice do array como ID único temporário
-          titulo: (convo.pergunta || "Nova conversa").substring(0, 40) + "..." // Cria um título a partir da pergunta
+          titulo: (convo.pergunta || "Nova conversa").substring(0, 40) + "..."
         }));
-        // =======================================================
-
-        console.log("DEBUG: Conversas com IDs gerados pelo frontend:", conversationsWithIds);
-        setConversations(conversationsWithIds);
+        setConversations(conversationsWithTitles);
       } catch (error) {
         console.error("Erro ao buscar conversas:", error);
       }
@@ -138,15 +133,26 @@ function ChatContent() {
   };
 
   const speakResponse = (text) => {
+    // Para a síntese de voz anterior antes de iniciar uma nova
+    if (synthesizerRef.current) {
+      synthesizerRef.current.close();
+    }
     if (!isSpeechEnabled) return;
+
     const plainText = stripMarkdown(text);
     const synthesizer = new SpeechSynthesizer(speechConfig);
+    synthesizerRef.current = synthesizer;
+
     synthesizer.speakTextAsync(
       plainText,
-      () => synthesizer.close(),
+      () => {
+        synthesizer.close();
+        synthesizerRef.current = null;
+      },
       (error) => {
         console.error("Erro na síntese de voz:", error);
         synthesizer.close();
+        synthesizerRef.current = null;
       }
     );
   };
@@ -155,6 +161,11 @@ function ChatContent() {
     const trimmedInput = (typeof textToSend === "string" ? textToSend : input).trim();
     if (!trimmedInput || isBotTyping || isListening) return;
 
+    // Para qualquer áudio que esteja tocando
+    if (synthesizerRef.current) {
+      synthesizerRef.current.close();
+      synthesizerRef.current = null;
+    }
     requestCancellationRef.current?.cancel();
 
     const userMessage = { id: crypto.randomUUID(), sender: "user", text: trimmedInput };
@@ -167,7 +178,8 @@ function ChatContent() {
       requestCancellationRef.current = { cancel: () => controller.abort() };
 
       const response = isAuthenticated && user
-        ? await postMessage(trimmedInput, null, controller.signal) // Sempre envia null para o backend baseado em sessão criar/continuar a conversa
+        // Envia o ID da conversa atual para o backend, ou null se for uma nova conversa
+        ? await postMessage(trimmedInput, currentChatId, controller.signal)
         : await conversarAnonimo(trimmedInput, selectedPersona, controller.signal);
 
       if (controller.signal.aborted) return;
@@ -217,6 +229,10 @@ function ChatContent() {
   };
 
   const startNewChat = () => {
+    if (synthesizerRef.current) {
+      synthesizerRef.current.close();
+      synthesizerRef.current = null;
+    }
     requestCancellationRef.current?.cancel();
     setIsBotTyping(false);
     setChatBodyAnimationClass("fade-out");
