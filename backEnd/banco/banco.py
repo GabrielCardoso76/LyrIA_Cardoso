@@ -175,21 +175,30 @@ def carregar_conversas(usuario_email, limite=12):
     conn = psycopg.connect(DB_URL)
     cursor = conn.cursor(row_factory=dict_row)
     cursor.execute("""
-        SELECT c.id AS id, ur.conteudo AS pergunta, ar.conteudo AS resposta
-        FROM mensagens m
-        JOIN user_requests ur ON m.request_id = ur.id
-        JOIN ai_responses ar ON m.response_id = ar.id
-        JOIN conversas c ON m.conversa_id = c.id
-        JOIN usuarios u ON c.usuario_id = u.id
-        WHERE u.email = %s
-        ORDER BY m.criado_em ASC
-        LIMIT %s
+        WITH RankedMessages AS (
+            SELECT
+                c.id AS conversa_id,
+                ur.conteudo AS pergunta,
+                ar.conteudo AS resposta,
+                ROW_NUMBER() OVER(PARTITION BY c.id ORDER BY m.criado_em ASC) as rn
+            FROM mensagens m
+            JOIN user_requests ur ON m.request_id = ur.id
+            JOIN ai_responses ar ON m.response_id = ar.id
+            JOIN conversas c ON m.conversa_id = c.id
+            JOIN usuarios u ON c.usuario_id = u.id
+            WHERE u.email = %s
+        )
+        SELECT conversa_id as id, pergunta, resposta
+        FROM RankedMessages
+        WHERE rn = 1
+        ORDER BY id DESC
+        LIMIT %s;
     """, (usuario_email, limite))
     
     results = cursor.fetchall()
     conn.close()
     
-    return [{"pergunta": row["pergunta"], "resposta": row["resposta"]} for row in results] if results else []
+    return [{"id": row["id"], "pergunta": row["pergunta"], "resposta": row["resposta"]} for row in results] if results else []
 
 
 def carregar_memorias(usuario_email, limite=20):

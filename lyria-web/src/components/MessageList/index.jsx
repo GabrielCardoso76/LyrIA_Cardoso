@@ -49,23 +49,23 @@ const MessageList = ({
               animate={msg.animate}
               onUpdate={scrollToBottom}
             />
-            {msg.sender === "bot" && (
-              <div className="message-actions">
-                <button
-                  className="action-btn"
-                  onClick={() => onSpeakMessage(msg.id, msg.text)}
-                >
-                  {currentlySpeakingId === msg.id ? <FiSquare /> : <FiVolume2 />}
-                </button>
-                <button
-                  className="action-btn"
-                  onClick={() => handleCopyToClipboard(msg.text, msg.id || index)}
-                >
-                  {copiedId === (msg.id || index) ? <FiCheck /> : <FiCopy />}
-                </button>
-              </div>
-            )}
           </div>
+          {msg.sender === "bot" && (
+            <div className="message-actions">
+              <button
+                className="action-btn"
+                onClick={() => onSpeakMessage(msg.id, msg.text)}
+              >
+                {currentlySpeakingId === msg.id ? <FiSquare /> : <FiVolume2 />}
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => handleCopyToClipboard(msg.text, msg.id || index)}
+              >
+                {copiedId === (msg.id || index) ? <FiCheck /> : <FiCopy />}
+              </button>
+            </div>
+          )}
         </div>
       ))}
       {isBotTyping && (

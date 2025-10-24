@@ -137,18 +137,16 @@ function ChatContent() {
   };
 
   const handleSpeakMessage = (messageId, text) => {
-    // Se algo já está falando e o usuário clica em um botão diferente, exibe um alerta.
-    if (currentlySpeakingId && currentlySpeakingId !== messageId) {
-      addToast("Por favor, pare a fala atual antes de iniciar outra.", "info");
-      return;
-    }
-
-    // Se o usuário clica no botão da mensagem que já está tocando, para a fala.
-    if (synthesizerRef.current && currentlySpeakingId === messageId) {
+    // Interrompe a fala atual, não importa qual seja.
+    if (synthesizerRef.current) {
       synthesizerRef.current.close();
       synthesizerRef.current = null;
-      setCurrentlySpeakingId(null);
-      return;
+      // Se a fala interrompida era a mesma que o usuário clicou,
+      // apenas paramos e não iniciamos uma nova.
+      if (currentlySpeakingId === messageId) {
+        setCurrentlySpeakingId(null);
+        return;
+      }
     }
 
     // Inicia a nova fala
@@ -160,15 +158,21 @@ function ChatContent() {
     synthesizer.speakTextAsync(
       plainText,
       () => {
-        synthesizer.close();
-        synthesizerRef.current = null;
-        setCurrentlySpeakingId(null);
+        // Limpeza quando a fala termina normalmente
+        if (synthesizerRef.current === synthesizer) {
+          synthesizer.close();
+          synthesizerRef.current = null;
+          setCurrentlySpeakingId(null);
+        }
       },
       (error) => {
         console.error("Erro na síntese de voz:", error);
-        synthesizer.close();
-        synthesizerRef.current = null;
-        setCurrentlySpeakingId(null);
+        // Limpeza em caso de erro
+        if (synthesizerRef.current === synthesizer) {
+          synthesizer.close();
+          synthesizerRef.current = null;
+          setCurrentlySpeakingId(null);
+        }
       }
     );
   };
@@ -262,6 +266,7 @@ function ChatContent() {
     if (synthesizerRef.current) {
       synthesizerRef.current.close();
       synthesizerRef.current = null;
+      setCurrentlySpeakingId(null);
     }
     requestCancellationRef.current?.cancel();
     setIsBotTyping(false);

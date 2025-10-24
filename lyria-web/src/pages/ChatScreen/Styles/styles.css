@@ -20,7 +20,7 @@
 .galaxy-chat-area {
   width: 100%;
   max-width: 1200px;
-  height: 90vh;
+  height: 85vh;
   max-height: 900px;
   display: flex;
   flex-direction: column;
@@ -188,15 +188,12 @@
 }
 
 .message-actions {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: 0.5rem;
   display: flex;
   gap: 0.5rem;
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
+  padding-top: 0.5rem;
+  align-self: flex-start;
 }
 
 .message-wrapper:hover .message-actions {
