@@ -56,7 +56,7 @@ function ChatContent() {
   const [conversations, setConversations] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isListening, setIsListening] = useState(false);
-  const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(availableVoices[0].value);
   const [chatBodyAnimationClass, setChatBodyAnimationClass] = useState("fade-in");
   const [isLoginPromptVisible, setLoginPromptVisible] = useState(false);
@@ -65,6 +65,7 @@ function ChatContent() {
   const [chatToDelete, setChatToDelete] = useState(null);
   const [personas, setPersonas] = useState({});
   const [selectedPersona, setSelectedPersona] = useState("professor");
+  const [currentlySpeakingId, setCurrentlySpeakingId] = useState(null);
   const synthesizerRef = useRef(null); // Ref para controlar a síntese de voz
 
   useEffect(() => {
@@ -134,30 +135,37 @@ function ChatContent() {
       .replace(/!\[[^\]]*\]\([^\)]+\)/g, " ").trim();
   };
 
-  const speakResponse = (text) => {
-    // Para a síntese de voz anterior antes de iniciar uma nova
+  const handleSpeakMessage = (messageId, text) => {
     if (synthesizerRef.current) {
       synthesizerRef.current.close();
+      synthesizerRef.current = null;
+      // Se a mensagem clicada era a que estava tocando, apenas paramos.
+      if (currentlySpeakingId === messageId) {
+        setCurrentlySpeakingId(null);
+        return;
+      }
     }
-    if (!isSpeechEnabled) return;
 
-    const plainText = stripMarkdown(text);
-    const synthesizer = new SpeechSynthesizer(speechConfig);
+    const plainText = stripMarkdown(text);
+    const synthesizer = new SpeechSynthesizer(speechConfig);
     synthesizerRef.current = synthesizer;
+    setCurrentlySpeakingId(messageId);
 
-    synthesizer.speakTextAsync(
-      plainText,
-      () => {
+    synthesizer.speakTextAsync(
+      plainText,
+      () => {
         synthesizer.close();
         synthesizerRef.current = null;
+        setCurrentlySpeakingId(null);
       },
-      (error) => {
-        console.error("Erro na síntese de voz:", error);
-        synthesizer.close();
+      (error) => {
+        console.error("Erro na síntese de voz:", error);
+        synthesizer.close();
         synthesizerRef.current = null;
-      }
-    );
-  };
+        setCurrentlySpeakingId(null);
+      }
+    );
+  };
 
   const handleSend = async (textToSend) => {
     const trimmedInput = (typeof textToSend === "string" ? textToSend : input).trim();
@@ -192,7 +200,6 @@ function ChatContent() {
 
       const botMessage = { id: crypto.randomUUID(), sender: "bot", text: response.resposta, animate: true };
       setMessages((prev) => [...prev, botMessage]);
-      speakResponse(response.resposta);
     } catch (error) {
       if (error.name !== "AbortError") {
         const errorMessage = { id: crypto.randomUUID(), sender: "bot", text: "Desculpe, ocorreu um erro." };
@@ -352,7 +359,13 @@ function ChatContent() {
           {messages.length === 0 ? (
             <PromptSuggestions onSuggestionClick={handleSend} />
           ) : (
-            <MessageList user={user} messages={messages} isBotTyping={isBotTyping} />
+            <MessageList
+              user={user}
+              messages={messages}
+              isBotTyping={isBotTyping}
+              onSpeakMessage={handleSpeakMessage}
+              currentlySpeakingId={currentlySpeakingId}
+            />
           )}
         </div>
         <ChatInput

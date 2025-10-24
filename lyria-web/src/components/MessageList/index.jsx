@@ -1,9 +1,15 @@
-import { FiUser, FiCopy, FiCheck } from "react-icons/fi";
+import { FiUser, FiCopy, FiCheck, FiVolume2, FiSquare } from "react-icons/fi";
 import { RiRobot2Line } from "react-icons/ri";
 import AnimatedBotMessage from "../AnimatedBotMessage";
 import { useState, useEffect, useRef } from "react";
 
-const MessageList = ({ user, messages, isBotTyping }) => {
+const MessageList = ({
+  user,
+  messages,
+  isBotTyping,
+  onSpeakMessage,
+  currentlySpeakingId,
+}) => {
   const [copiedId, setCopiedId] = useState(null);
   const messagesEndRef = useRef(null);
 
@@ -38,14 +44,26 @@ const MessageList = ({ user, messages, isBotTyping }) => {
             <span className="sender-name">
               {msg.sender === "bot" ? "LyrIA" : "Você"}
             </span>
-            <AnimatedBotMessage fullText={msg.text} animate={msg.animate} />
+            <AnimatedBotMessage
+              fullText={msg.text}
+              animate={msg.animate}
+              onUpdate={scrollToBottom}
+            />
             {msg.sender === "bot" && (
-              <button
-                className="copy-btn"
-                onClick={() => handleCopyToClipboard(msg.text, msg.id || index)}
-              >
-                {copiedId === (msg.id || index) ? <FiCheck /> : <FiCopy />}
-              </button>
+              <div className="message-actions">
+                <button
+                  className="action-btn"
+                  onClick={() => onSpeakMessage(msg.id, msg.text)}
+                >
+                  {currentlySpeakingId === msg.id ? <FiSquare /> : <FiVolume2 />}
+                </button>
+                <button
+                  className="action-btn"
+                  onClick={() => handleCopyToClipboard(msg.text, msg.id || index)}
+                >
+                  {copiedId === (msg.id || index) ? <FiCheck /> : <FiCopy />}
+                </button>
+              </div>
             )}
           </div>
         </div>

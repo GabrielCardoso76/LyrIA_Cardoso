@@ -3,8 +3,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import CodeBlock from "../CodeBlock"; // Import the new component
 
-function AnimatedBotMessage({ fullText, animate = true }) {
+function AnimatedBotMessage({ fullText, animate = true, onUpdate }) {
   const [text, setText] = useState(animate ? "" : fullText);
+
+  useEffect(() => {
+    if (onUpdate) onUpdate();
+  }, [text, onUpdate]);
 
   useEffect(() => {
     if (!animate) {
